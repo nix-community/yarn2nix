@@ -1,0 +1,15 @@
+{
+  "name": "elm-cards",
+  "version": "1.0.0",
+  "description": "Hypertext Card app",
+  "main": "elm.js",
+  "dependencies": {
+    "elm-live": "^2.6.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "AGPL-3.0"
+}
