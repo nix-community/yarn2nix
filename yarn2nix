@@ -6,6 +6,7 @@ output_file = ARGV.shift
 if input_file.nil? || output_file.nil?
   $stderr.puts "No input and/or output file provided!"
   puts "Expected usage: #{$0} <some yarn.lock file> <yarn-dep-output.nix>"
+  exit 1
 end
 
 FIRST_TWO_LINES = [
@@ -28,20 +29,21 @@ dependencies = lines.select { |line| line.start_with? "  resolved" }.map do |lin
   url  = match["url"]
   tgz  = match["tgz"]
   sha1 = match["sha1"]
+  reference = url.split("#").first
 
-  { name: name, url: url, tgz: tgz, sha1: sha1 }
+  { name: name, url: url, tgz: tgz, sha1: sha1, reference: reference }
 end
 
 File.open(output_file,"w") do |output|
   output.puts '['
 
-  dep_key_names = []
   dependencies.each do |dep|
     name = "npm-" + dep[:tgz].sub(/\.tgz$/,"") + "-" + dep[:sha1]
     output.puts ' {'
     output.puts '   name = "%s";' % name
     output.puts '   url = "%s";' % dep[:url]
     output.puts '   sha1 = "%s";' % dep[:sha1]
+    output.puts '   reference = "%s";' % dep[:reference]
     output.puts ' }'
   end
   output.puts ']'
