@@ -51,7 +51,7 @@ rec {
   yarnEnv = package_json: lockFile: deps: 
     let
       deps_dirs = (yarnDepsCache deps);
-      ln_node_modules = concatStringsSep "\n" (map (dep: "cp -rv ${dep.dir} $out/node_modules/${dep.name}" ) (yarnDeps deps));
+      ln_node_modules = concatStringsSep "\n" (map (dep: "mkdir $out/node_modules/${dep.name}; cp -r ${dep.dir}/* $out/node_modules/${dep.name}/" ) (yarnDeps deps));
     in
     stdenv.mkDerivation rec {
       name = "yarn-env";
@@ -78,7 +78,9 @@ rec {
 
         cp ${package_json} ./package.json
         cp ${lockFile} ./yarn.lock
-        HOME=`pwd` ${nodePackages.yarn}/bin/yarn check --modules-folder $out/node_modules
+        #HOME=`pwd` ${nodePackages.yarn}/bin/yarn check --modules-folder $out/node_modules
+        find $out/node_modules
+
       '';
     };
 }

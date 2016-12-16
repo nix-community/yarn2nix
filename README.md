@@ -10,6 +10,10 @@ The nice thing, from a Nix perspective, is that the `yarn.lock` file also contai
 
 I believe that this should make yarn easy to integrate to nix.
 
+
+### Usage
+`yarn2nix package.json yarn.lock > yarn.nix`
+
 ### Status
 
 - [x] Downloading the .tgz files
