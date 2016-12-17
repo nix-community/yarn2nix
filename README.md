@@ -1,4 +1,12 @@
-# WORK IN PROGRESS!
+# DEPRICATED
+
+I'm not continuing with this approach, but have decided to add support for `yarn.lock` files to 
+`node2nix`, see https://github.com/svanderburg/node2nix/pull/28.
+
+The node2nix project already contains a significant amount of code to actually make things work,
+and it would be a shame to replicate that effort here.
+
+---
 
 ## yarn2nix
 Yarn is package manager for javascript that is compatible with npm.
