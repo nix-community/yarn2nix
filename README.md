@@ -1,29 +1,56 @@
-# DEPRICATED
+# yarn2nix
 
-I'm not continuing with this approach, but have decided to add support for `yarn.lock` files to 
-`node2nix`, see https://github.com/svanderburg/node2nix/pull/28.
-
-The node2nix project already contains a significant amount of code to actually make things work,
-and it would be a shame to replicate that effort here.
-
----
-
-## yarn2nix
-Yarn is package manager for javascript that is compatible with npm.
-It uses, just like Bundler and Cargo, a lock file that ties down the exact versions of dependencies
-used during installation.
-
-The nice thing, from a Nix perspective, is that the `yarn.lock` file also contains the URL of the
-`.tar.gz` file that makes up the package, *and* a sha1 of the content of that package.
-
-I believe that this should make yarn easy to integrate to nix.
+Converts `yarn.lock` files into nix expression.
 
 
-### Usage
-`yarn2nix package.json yarn.lock > yarn.nix`
+1. Make yarn and yarn2nix available in your shell.
+   ```
+     cd $GIT_REPO
+     nix-env -i yarn2nix -f .
+     nix-env -i yarn -f .
+   ```
+2. Go to your project dir
+3. If you have not generated a yarn.lock file before, run
+   ```
+     yarn install
+   ```
+4. Create a `packages.nix` via:
+  ```
+    yarn2nix > package.nix
+  ```
 
-### Status
+5. Create a `default.nix` to build your application (see the example below)
 
-- [x] Downloading the .tgz files
-- [x] Verifying the SHA1's
-- [ ] Make sure that the directory structure in `$tmp/.cache/yarn` is correct.
+## Example `default.nix`
+ 
+   For example, for the [`front-end`](https://github.com/microservices-demo/front-end) of weave's microservice reference application:
+
+  ```
+    with (import <nixpkgs> {});
+    with (import /home/maarten/code/nixos/yarn2nix { inherit pkgs; });
+    rec {
+      weave-front-end = buildYarnPackage {
+        name = "weave-front-end";
+        src = ./.;
+        offline_cache = (callPackage ./package.nix {}).offline_cache;
+        packageJson = ./package.json;
+        yarnLock = ./yarn.lock;
+      };
+    }
+   ```
+
+   _note: you must modify `/home/maarten/code/nixos/yarn2nix`_
+
+   To make this work nicely, I exposed the express server in `server.js` as a binary:
+   1. Add a `bin` entry to `packages.json` with the value `server.js`
+   2. Add  `#!/usr/bin/env node` at the top of the file
+   3. `chmod +x server.js`
+
+### Testing the example
+
+1. Run `nix-build` In the `front-end` directory. Copy the result path.
+2. Create an isolated environment `cd /tmp; nix-shell --pure -p bash`.
+3. `/nix/store/some-path-to-frontend/bin/weave-demo-frontend`
+
+## License
+`yarn2nix` is released under the terms of the GPL-3.0 license.
