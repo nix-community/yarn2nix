@@ -41,9 +41,10 @@ function generateNix(lockedDependencies) {
   return output;
 }
 
+const yarnLock = process.argv[2] || "yarn.lock";
 const fs = require("fs");
 const YarnfileParser = require("yarn/lib/lockfile/parse.js").default;
-const yarn_lock_file_content = fs.readFileSync("yarn.lock").toString();
+const yarn_lock_file_content = fs.readFileSync(yarnLock).toString();
 
 const lockedDependencies  = YarnfileParser(yarn_lock_file_content)
 let output = generateNix(lockedDependencies);
