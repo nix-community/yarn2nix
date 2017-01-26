@@ -88,9 +88,9 @@ rec {
       phases = "unpackPhase yarnPhase fixupPhase";
 
       yarnPhase = ''
-        if [ -d node-modules ]; then
+        if [ -d node_modules ]; then
           echo "Node modules dir present. Removing."
-          rm -rf node-modules
+          rm -rf node_modules
         fi
 
         if [ -d npm-packages-offline-cache ]; then
@@ -101,7 +101,7 @@ rec {
         mkdir -p $out/node_modules
         ln -s ${deps}/node_modules/* $out/node_modules/
 
-        if [ -d $out/node-modules/${npmPackageName} ]; then
+        if [ -d $out/node_modules/${npmPackageName} ]; then
           echo "Error! There is already an ${npmPackageName} package in the top level node_modules dir!"
           exit 1
         fi
