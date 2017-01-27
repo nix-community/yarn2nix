@@ -23,8 +23,7 @@ function generateNix(lockedDependencies) {
       found[file_name] = null;
     }
 
-    let url = dep["resolved"];
-    let sha1 = url.split("#")[1];
+    let [url, sha1] = dep["resolved"].split("#");
 
     output += '    {\n';
     output += '      name = "' + file_name + '";\n'
