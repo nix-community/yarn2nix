@@ -3,13 +3,13 @@ with pkgs;
 
 rec {
   yarn = stdenv.mkDerivation rec {
-    version = "0.18.1";
+    version = "0.19.1";
     name = "yarn-${version}";
     buildInputs = [nodejs-6_x];
     src = fetchurl {
       name = "yarn";
       url = "https://github.com/yarnpkg/yarn/releases/download/v${version}/yarn-${version}.js";
-      sha256 = "0rpzbg0kp7sz50dnyphw6dzl0v01j2p08cnx1wa9nzz7jky0mdzn";
+      sha256 = "0jb12yngiwkbqslpq6v871nqw8xd4h6igadpm91inqv7pnrrnz7y";
     };
 
     phases = "installPhase fixupPhase";
