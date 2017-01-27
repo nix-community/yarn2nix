@@ -59,7 +59,7 @@ rec {
         # Do not look up in the registry, but in the offline cache.
         # TODO: Ask upstream to fix this mess.
         sed -i 's/https:\/\/registry.yarnpkg.com\/.*\/-\///' yarn.lock
-        yarn --offline
+        yarn --offline --frozen-lockfile
 
         mkdir $out
         mv node_modules $out/
