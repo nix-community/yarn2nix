@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 "use strict";
 
-function generateNix(lockedDependencies) {
-  let output = "{fetchurl, nodejs, linkFarm}: rec {\n";
-  output += '  offline_cache = linkFarm "offline" packages;\n';
-  output += "  packages = [\n";
+const HEAD = `
+{fetchurl, nodejs, linkFarm}: rec {
+  offline_cache = linkFarm "offline" packages;
+  packages = [
+`.trim();
 
+function generateNix(lockedDependencies) {
+  let output = HEAD;
   let found = {};
 
   for (var depRange in lockedDependencies) {
@@ -25,14 +28,15 @@ function generateNix(lockedDependencies) {
 
     let [url, sha1] = dep["resolved"].split("#");
 
-    output += '    {\n';
-    output += '      name = "' + file_name + '";\n'
-    output += '      path = fetchurl {\n';
-    output += '        name = "' + file_name + '";\n';
-    output += '        url  = "' + url + '";\n';
-    output += '        sha1 = "' + sha1 + '";\n';
-    output += '      };\n';
-    output += '    }\n\n';
+    output += `
+    {
+       name = "${file_name}";
+       path = fetchurl {
+         name = "${file_name}";
+         url  = "${url}";
+         sha1 = "${sha1}";
+       };
+    }`
   }
   output += "  ];\n";
 
