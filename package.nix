@@ -1,6 +1,7 @@
 {fetchurl, nodejs, linkFarm}: rec {
   offline_cache = linkFarm "offline" packages;
   packages = [
+
     {
       name = "abbrev-1.0.9.tgz";
       path = fetchurl {
@@ -1602,7 +1603,5 @@
         sha1 = "8dc8dda71466e8d64623fdbac9b586e83e02a088";
       };
     }
-
   ];
 }
-

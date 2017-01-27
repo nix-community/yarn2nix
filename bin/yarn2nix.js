@@ -8,8 +8,9 @@ const HEAD = `
 `.trim();
 
 function generateNix(lockedDependencies) {
-  let output = HEAD;
   let found = {};
+
+  console.log(HEAD)
 
   for (var depRange in lockedDependencies) {
     let dep = lockedDependencies[depRange];
@@ -28,20 +29,19 @@ function generateNix(lockedDependencies) {
 
     let [url, sha1] = dep["resolved"].split("#");
 
-    output += `
+    console.log(`
     {
-       name = "${file_name}";
-       path = fetchurl {
-         name = "${file_name}";
-         url  = "${url}";
-         sha1 = "${sha1}";
-       };
-    }`
+      name = "${file_name}";
+      path = fetchurl {
+        name = "${file_name}";
+        url  = "${url}";
+        sha1 = "${sha1}";
+      };
+    }`)
   }
-  output += "  ];\n";
 
-  output += "}\n";
-  return output;
+  console.log("  ];")
+  console.log("}")
 }
 
 const yarnLock = process.argv[2] || "yarn.lock";
@@ -50,6 +50,4 @@ const YarnfileParser = require("yarn/lib/lockfile/parse.js").default;
 const yarn_lock_file_content = fs.readFileSync(yarnLock).toString();
 
 const lockedDependencies  = YarnfileParser(yarn_lock_file_content)
-let output = generateNix(lockedDependencies);
-
-console.log(output);
+generateNix(lockedDependencies);
