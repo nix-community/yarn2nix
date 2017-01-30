@@ -20,14 +20,14 @@ rec {
     '';
   };
 
-  # Generates the package.nix from the yarn.lock file
-  packageNix = yarnLock:
-    pkgs.runCommand "package.nix" {}
+  # Generates the yarn.nix from the yarn.lock file
+  generateYarnNix = yarnLock:
+    pkgs.runCommand "yarn.nix" {}
       "${yarn2nix}/bin/yarn2nix ${yarnLock} > $out";
 
   loadOfflineCache = yarnLock:
     let
-      pkg = packageNix yarnLock;
+      pkg = generateYarnNix yarnLock;
       pkg_ = pkgs.callPackage pkg {};
     in
       pkg_.offline_cache;
@@ -121,6 +121,6 @@ rec {
     src = ./.;
     packageJson = ./package.json;
     yarnLock = ./yarn.lock;
-    offlineCache = (callPackage ./package.nix {}).offline_cache;
+    offlineCache = (callPackage ./yarn.nix {}).offline_cache;
   };
 }
