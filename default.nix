@@ -25,20 +25,18 @@ rec {
     pkgs.runCommand "yarn.nix" {}
       "${yarn2nix}/bin/yarn2nix ${yarnLock} > $out";
 
-  loadOfflineCache = yarnLock:
+  loadOfflineCache = yarnNix:
     let
-      pkg = generateYarnNix yarnLock;
-      pkg_ = pkgs.callPackage pkg {};
+      pkg = pkgs.callPackage yarnNix {};
     in
-      pkg_.offline_cache;
+      pkg.offline_cache;
 
-  buildYarnPackageDeps = { name, packageJson, yarnLock, offlineCache ? null }:
+  buildYarnPackageDeps = { name, packageJson, yarnLock, yarnNix ? null }:
     let
-      offlineCache_ =
-        if offlineCache == null then
-          loadOfflineCache yarnLock
-        else
-          offlineCache;
+      yarnNix_ =
+        if yarnNix == null then (generateYarnNix yarnLock) else yarnNix;
+      offlineCache =
+        loadOfflineCache yarnNix_;
     in
     stdenv.mkDerivation {
       name = "${name}-modules";
@@ -53,7 +51,7 @@ rec {
         cp ${packageJson} ./package.json
         cp ${yarnLock} ./yarn.lock
 
-        ln -s ${offlineCache_}/ npm-packages-offline-cache
+        ln -s ${offlineCache}/ npm-packages-offline-cache
         yarn config set yarn-offline-mirror `pwd`/npm-packages-offline-cache --offline
 
         # Do not look up in the registry, but in the offline cache.
@@ -66,12 +64,10 @@ rec {
       '';
     };
 
-  buildYarnPackage = {name, src, packageJson, yarnLock, extraBuildInputs ? [], offlineCache ? null, ... }@args:
+  buildYarnPackage = {name, src, packageJson, yarnLock, yarnNix ? null, extraBuildInputs ? [], ... }@args:
     let
       deps = buildYarnPackageDeps {
-        inherit name offlineCache;
-        inherit packageJson;
-        inherit yarnLock;
+        inherit name packageJson yarnLock yarnNix;
       };
       npmPackageName = if lib.hasAttr "npmPackageName" args
         then args.npmPackageName
@@ -121,6 +117,6 @@ rec {
     src = ./.;
     packageJson = ./package.json;
     yarnLock = ./yarn.lock;
-    offlineCache = (callPackage ./yarn.nix {}).offline_cache;
+    yarnNix = ./yarn.nix;
   };
 }
