@@ -2,7 +2,7 @@
 "use strict";
 
 const HEAD = `
-{fetchurl, nodejs, linkFarm}: rec {
+{fetchurl, linkFarm}: rec {
   offline_cache = linkFarm "offline" packages;
   packages = [
 `.trim();
