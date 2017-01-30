@@ -12,7 +12,7 @@ rec {
       sha256 = "0jb12yngiwkbqslpq6v871nqw8xd4h6igadpm91inqv7pnrrnz7y";
     };
 
-    phases = "installPhase fixupPhase";
+    phases = ["installPhase" "fixupPhase"];
     installPhase = ''
       mkdir -p $out/bin
       cp ${src} $out/bin/yarn
@@ -43,7 +43,7 @@ rec {
     stdenv.mkDerivation {
       name = "${name}-modules";
 
-      phases = "buildPhase";
+      phases = ["buildPhase"];
       buildInputs = [ yarn nodejs-6_x ];
 
       buildPhase = ''
@@ -85,7 +85,7 @@ rec {
 
       buildInputs = [ yarn nodejs-6_x ] ++ extraBuildInputs;
 
-      phases = "unpackPhase yarnPhase fixupPhase";
+      phases = ["unpackPhase" "yarnPhase" "fixupPhase"];
 
       yarnPhase = ''
         if [ -d node_modules ]; then
