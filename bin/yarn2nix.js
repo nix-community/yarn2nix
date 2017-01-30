@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 "use strict";
 
-function generateNix(lockedDependencies) {
-  let output = "{fetchurl, nodejs, linkFarm}: rec {\n";
-  output += '  offline_cache = linkFarm "offline" packages;\n';
-  output += "  packages = [\n";
+const HEAD = `
+{fetchurl, linkFarm}: rec {
+  offline_cache = linkFarm "offline" packages;
+  packages = [
+`.trim();
 
+function generateNix(lockedDependencies) {
   let found = {};
+
+  console.log(HEAD)
 
   for (var depRange in lockedDependencies) {
     let dep = lockedDependencies[depRange];
@@ -23,29 +27,27 @@ function generateNix(lockedDependencies) {
       found[file_name] = null;
     }
 
-    let url = dep["resolved"];
-    let sha1 = url.split("#")[1];
+    let [url, sha1] = dep["resolved"].split("#");
 
-    output += '    {\n';
-    output += '      name = "' + file_name + '";\n'
-    output += '      path = fetchurl {\n';
-    output += '        name = "' + file_name + '";\n';
-    output += '        url  = "' + url + '";\n';
-    output += '        sha1 = "' + sha1 + '";\n';
-    output += '      };\n';
-    output += '    }\n\n';
+    console.log(`
+    {
+      name = "${file_name}";
+      path = fetchurl {
+        name = "${file_name}";
+        url  = "${url}";
+        sha1 = "${sha1}";
+      };
+    }`)
   }
-  output += "  ];\n";
 
-  output += "}\n";
-  return output;
+  console.log("  ];")
+  console.log("}")
 }
 
+const yarnLock = process.argv[2] || "yarn.lock";
 const fs = require("fs");
 const YarnfileParser = require("yarn/lib/lockfile/parse.js").default;
-const yarn_lock_file_content = fs.readFileSync("yarn.lock").toString();
+const yarn_lock_file_content = fs.readFileSync(yarnLock).toString();
 
 const lockedDependencies  = YarnfileParser(yarn_lock_file_content)
-let output = generateNix(lockedDependencies);
-
-console.log(output);
+generateNix(lockedDependencies);

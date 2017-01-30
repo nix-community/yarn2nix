@@ -3,16 +3,16 @@ with pkgs;
 
 rec {
   yarn = stdenv.mkDerivation rec {
-    version = "0.18.1";
+    version = "0.19.1";
     name = "yarn-${version}";
     buildInputs = [nodejs-6_x];
     src = fetchurl {
       name = "yarn";
       url = "https://github.com/yarnpkg/yarn/releases/download/v${version}/yarn-${version}.js";
-      sha256 = "0rpzbg0kp7sz50dnyphw6dzl0v01j2p08cnx1wa9nzz7jky0mdzn";
+      sha256 = "0jb12yngiwkbqslpq6v871nqw8xd4h6igadpm91inqv7pnrrnz7y";
     };
 
-    phases = "installPhase fixupPhase";
+    phases = ["installPhase" "fixupPhase"];
     installPhase = ''
       mkdir -p $out/bin
       cp ${src} $out/bin/yarn
@@ -20,11 +20,28 @@ rec {
     '';
   };
 
-  buildYarnPackageDeps = { name, packageJson, yarnLock, offline_cache }:
+  # Generates the yarn.nix from the yarn.lock file
+  generateYarnNix = yarnLock:
+    pkgs.runCommand "yarn.nix" {}
+      "${yarn2nix}/bin/yarn2nix ${yarnLock} > $out";
+
+  loadOfflineCache = yarnNix:
+    let
+      pkg = pkgs.callPackage yarnNix {};
+    in
+      pkg.offline_cache;
+
+  buildYarnPackageDeps = { name, packageJson, yarnLock, yarnNix ? null }:
+    let
+      yarnNix_ =
+        if yarnNix == null then (generateYarnNix yarnLock) else yarnNix;
+      offlineCache =
+        loadOfflineCache yarnNix_;
+    in
     stdenv.mkDerivation {
       name = "${name}-modules";
 
-      phases = "buildPhase";
+      phases = ["buildPhase"];
       buildInputs = [ yarn nodejs-6_x ];
 
       buildPhase = ''
@@ -34,25 +51,23 @@ rec {
         cp ${packageJson} ./package.json
         cp ${yarnLock} ./yarn.lock
 
-        ln -s ${offline_cache}/ npm-packages-offline-cache
+        ln -s ${offlineCache}/ npm-packages-offline-cache
         yarn config set yarn-offline-mirror `pwd`/npm-packages-offline-cache --offline
 
         # Do not look up in the registry, but in the offline cache.
         # TODO: Ask upstream to fix this mess.
         sed -i 's/https:\/\/registry.yarnpkg.com\/.*\/-\///' yarn.lock
-        yarn --offline
+        yarn --offline --frozen-lockfile
 
         mkdir $out
         mv node_modules $out/
       '';
     };
 
-  buildYarnPackage = {name, src, packageJson, yarnLock, extraBuildInputs ? [], offline_cache, ... }@args:
+  buildYarnPackage = {name, src, packageJson, yarnLock, yarnNix ? null, extraBuildInputs ? [], ... }@args:
     let
       deps = buildYarnPackageDeps {
-        inherit name offline_cache;
-        inherit packageJson;
-        inherit yarnLock;
+        inherit name packageJson yarnLock yarnNix;
       };
       npmPackageName = if lib.hasAttr "npmPackageName" args
         then args.npmPackageName
@@ -66,12 +81,12 @@ rec {
 
       buildInputs = [ yarn nodejs-6_x ] ++ extraBuildInputs;
 
-      phases = "unpackPhase yarnPhase fixupPhase";
+      phases = ["unpackPhase" "yarnPhase" "fixupPhase"];
 
       yarnPhase = ''
-        if [ -d node-modules ]; then
+        if [ -d node_modules ]; then
           echo "Node modules dir present. Removing."
-          rm -rf node-modules
+          rm -rf node_modules
         fi
 
         if [ -d npm-packages-offline-cache ]; then
@@ -82,7 +97,7 @@ rec {
         mkdir -p $out/node_modules
         ln -s ${deps}/node_modules/* $out/node_modules/
 
-        if [ -d $out/node-modules/${npmPackageName} ]; then
+        if [ -d $out/node_modules/${npmPackageName} ]; then
           echo "Error! There is already an ${npmPackageName} package in the top level node_modules dir!"
           exit 1
         fi
@@ -102,6 +117,6 @@ rec {
     src = ./.;
     packageJson = ./package.json;
     yarnLock = ./yarn.lock;
-    offline_cache = (callPackage ./package.nix {}).offline_cache;
+    yarnNix = ./yarn.nix;
   };
 }
