@@ -14,9 +14,9 @@ Converts `yarn.lock` files into nix expression.
    ```
      yarn install
    ```
-4. Create a `packages.nix` via:
+4. Create a `yarn.nix` via:
   ```
-    yarn2nix > package.nix
+    yarn2nix > yarn.nix
   ```
 
 5. Create a `default.nix` to build your application (see the example below)
@@ -32,9 +32,10 @@ Converts `yarn.lock` files into nix expression.
       weave-front-end = buildYarnPackage {
         name = "weave-front-end";
         src = ./.;
-        offline_cache = (callPackage ./package.nix {}).offline_cache;
         packageJson = ./package.json;
         yarnLock = ./yarn.lock;
+        # NOTE: this is optional and generated dynamically if omitted
+        yarnNix = ./yarn.nix;
       };
     }
    ```
