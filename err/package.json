@@ -1,0 +1,8 @@
+{
+  "name": "foobar",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "optional": "0.1.3"
+  }
+}
