@@ -2,23 +2,7 @@
 with pkgs;
 
 rec {
-  yarn = stdenv.mkDerivation rec {
-    version = "0.19.1";
-    name = "yarn-${version}";
-    buildInputs = [nodejs-6_x];
-    src = fetchurl {
-      name = "yarn";
-      url = "https://github.com/yarnpkg/yarn/releases/download/v${version}/yarn-${version}.js";
-      sha256 = "0jb12yngiwkbqslpq6v871nqw8xd4h6igadpm91inqv7pnrrnz7y";
-    };
-
-    phases = ["installPhase" "fixupPhase"];
-    installPhase = ''
-      mkdir -p $out/bin
-      cp ${src} $out/bin/yarn
-      chmod +x $out/bin/yarn
-    '';
-  };
+  inherit (pkgs) yarn;
 
   # Generates the yarn.nix from the yarn.lock file
   generateYarnNix = yarnLock:
