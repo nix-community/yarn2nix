@@ -1,4 +1,4 @@
-{ pkgs ? (import <nixpkgs> {})}:
+{ pkgs ? (import <nixpkgs> {}), nodejs ? pkgs.nodejs-7_x}:
 with pkgs;
 
 rec {
@@ -15,42 +15,66 @@ rec {
     in
       pkg.offline_cache;
 
-  buildYarnPackageDeps = { name, packageJson, yarnLock, yarnNix ? null }:
+  buildYarnPackageDeps = { name, packageJson, yarnLock, yarnNix ? null, pkgConfig ? {} }:
     let
       yarnNix_ =
         if yarnNix == null then (generateYarnNix yarnLock) else yarnNix;
       offlineCache =
         loadOfflineCache yarnNix_;
+      moreBuildInputs = (pkgs.lib.flatten (builtins.map (key:
+        pkgConfig.${key} . buildInputs or []
+      ) (builtins.attrNames pkgConfig)));
+      postInstall = (builtins.map (key:
+        if (pkgConfig.${key} ? "postInstall") then
+          ''
+            test -e node_modules/${key} && (
+              cd node_modules/${key}
+              ${pkgConfig.${key}.postInstall}
+            )
+          ''
+        else
+          ""
+      ) (builtins.attrNames pkgConfig));
     in
     stdenv.mkDerivation {
       name = "${name}-modules";
 
       phases = ["buildPhase"];
-      buildInputs = [ yarn nodejs-6_x ];
+      buildInputs = [ yarn nodejs ] ++ moreBuildInputs;
 
       buildPhase = ''
+        set -x
         # Yarn writes cache directories etc to $HOME.
         export HOME=`pwd`/yarn_home
 
         cp ${packageJson} ./package.json
         cp ${yarnLock} ./yarn.lock
 
-        yarn config set yarn-offline-mirror ${offlineCache}
+        yarn config --offline set yarn-offline-mirror ${offlineCache}
 
         # Do not look up in the registry, but in the offline cache.
         # TODO: Ask upstream to fix this mess.
-        sed -i 's/https:\/\/registry.yarnpkg.com\/.*\/-\///' yarn.lock
-        yarn --offline --frozen-lockfile
+        sed -i -E 's|^(\s*resolved\s*")https?://.*/|\1|' yarn.lock
+        yarn install --offline --frozen-lockfile --ignore-engines --ignore-scripts
+
+        ${pkgs.lib.concatStringsSep "\n" postInstall}
 
         mkdir $out
         mv node_modules $out/
       '';
     };
 
-  buildYarnPackage = {name, src, packageJson, yarnLock, yarnNix ? null, extraBuildInputs ? [], ... }@args:
+  buildYarnPackage = { name,
+                       src,
+                       packageJson,
+                       yarnLock,
+                       yarnNix ? null,
+                       extraBuildInputs ? [],
+                       pkgConfig ? {},
+                       ... }@args:
     let
       deps = buildYarnPackageDeps {
-        inherit name packageJson yarnLock yarnNix;
+        inherit name packageJson yarnLock yarnNix pkgConfig;
       };
       npmPackageName = if lib.hasAttr "npmPackageName" args
         then args.npmPackageName
@@ -62,7 +86,7 @@ rec {
       inherit name;
       inherit src;
 
-      buildInputs = [ yarn nodejs-6_x ] ++ extraBuildInputs;
+      buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
 
       phases = ["unpackPhase" "yarnPhase" "fixupPhase"];
 
