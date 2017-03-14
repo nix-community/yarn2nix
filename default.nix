@@ -21,7 +21,7 @@ rec {
         if yarnNix == null then (generateYarnNix yarnLock) else yarnNix;
       offlineCache =
         loadOfflineCache yarnNix_;
-      moreBuildInputs = (pkgs.lib.flatten (builtins.map (key:
+      extraBuildInputs = (pkgs.lib.flatten (builtins.map (key:
         pkgConfig.${key} . buildInputs or []
       ) (builtins.attrNames pkgConfig)));
       postInstall = (builtins.map (key:
@@ -40,7 +40,7 @@ rec {
       name = "${name}-modules";
 
       phases = ["buildPhase"];
-      buildInputs = [ yarn nodejs ] ++ moreBuildInputs;
+      buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
 
       buildPhase = ''
         # Yarn writes cache directories etc to $HOME.
