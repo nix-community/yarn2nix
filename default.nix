@@ -51,8 +51,7 @@ rec {
         cp ${packageJson} ./package.json
         cp ${yarnLock} ./yarn.lock
 
-        ln -s ${offlineCache}/ npm-packages-offline-cache
-        yarn config set yarn-offline-mirror `pwd`/npm-packages-offline-cache --offline
+        yarn config set yarn-offline-mirror ${offlineCache}
 
         # Do not look up in the registry, but in the offline cache.
         # TODO: Ask upstream to fix this mess.
