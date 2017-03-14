@@ -61,6 +61,7 @@ rec {
 
         mkdir $out
         mv node_modules $out/
+        patchShebangs $out
       '';
     };
 
