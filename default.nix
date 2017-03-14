@@ -43,7 +43,6 @@ rec {
       buildInputs = [ yarn nodejs ] ++ moreBuildInputs;
 
       buildPhase = ''
-        set -x
         # Yarn writes cache directories etc to $HOME.
         export HOME=`pwd`/yarn_home
 
