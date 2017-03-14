@@ -25,7 +25,7 @@ rec {
         pkgConfig.${key} . buildInputs or []
       ) (builtins.attrNames pkgConfig)));
       postInstall = (builtins.map (key:
-        if (pkgConfig.${key} ? "postInstall") then
+        if (pkgConfig.${key} ? postInstall) then
           ''
             test -e node_modules/${key} && (
               cd node_modules/${key}
