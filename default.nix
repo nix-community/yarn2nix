@@ -27,10 +27,9 @@ rec {
       postInstall = (builtins.map (key:
         if (pkgConfig.${key} ? postInstall) then
           ''
-            test -e node_modules/${key} && (
-              cd node_modules/${key}
-              ${pkgConfig.${key}.postInstall}
-            )
+            for f in $(find -L -path '*/node_modules/${key}' -type d); do
+              (cd "$f" && (${pkgConfig.${key}.postInstall}))
+            done
           ''
         else
           ""
