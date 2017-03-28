@@ -15,13 +15,20 @@ rec {
     in
       pkg.offline_cache;
 
-  buildYarnPackageDeps = { name, packageJson, yarnLock, yarnNix ? null, pkgConfig ? {} }:
+  buildYarnPackageDeps = {
+    name,
+    packageJson,
+    yarnLock,
+    yarnNix ? null,
+    pkgConfig ? {},
+    yarnFlags ? []
+  }:
     let
       yarnNix_ =
         if yarnNix == null then (generateYarnNix yarnLock) else yarnNix;
       offlineCache =
         loadOfflineCache yarnNix_;
-      extraBuildInputs = (pkgs.lib.flatten (builtins.map (key:
+      extraBuildInputs = (lib.flatten (builtins.map (key:
         pkgConfig.${key} . buildInputs or []
       ) (builtins.attrNames pkgConfig)));
       postInstall = (builtins.map (key:
@@ -53,9 +60,9 @@ rec {
         # Do not look up in the registry, but in the offline cache.
         # TODO: Ask upstream to fix this mess.
         sed -i -E 's|^(\s*resolved\s*")https?://.*/|\1|' yarn.lock
-        yarn install --offline --frozen-lockfile --ignore-engines --ignore-scripts
+        yarn install ${lib.escapeShellArgs yarnFlags}
 
-        ${pkgs.lib.concatStringsSep "\n" postInstall}
+        ${lib.concatStringsSep "\n" postInstall}
 
         mkdir $out
         mv node_modules $out/
@@ -63,17 +70,26 @@ rec {
       '';
     };
 
-  buildYarnPackage = { name,
-                       src,
-                       packageJson,
-                       yarnLock,
-                       yarnNix ? null,
-                       extraBuildInputs ? [],
-                       pkgConfig ? {},
-                       ... }@args:
+  buildYarnPackage = {
+    name,
+    src,
+    packageJson,
+    yarnLock,
+    yarnNix ? null,
+    extraBuildInputs ? [],
+    pkgConfig ? {},
+    extraYarnFlags ? [],
+    ...
+  }@args:
     let
+      yarnFlags = [
+        "--offline"
+        "--frozen-lockfile"
+        "--ignore-engines"
+        "--ignore-scripts"
+      ] ++ extraYarnFlags;
       deps = buildYarnPackageDeps {
-        inherit name packageJson yarnLock yarnNix pkgConfig;
+        inherit name packageJson yarnLock yarnNix pkgConfig yarnFlags;
       };
       npmPackageName = if lib.hasAttr "npmPackageName" args
         then args.npmPackageName
