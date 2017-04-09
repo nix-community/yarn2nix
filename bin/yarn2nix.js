@@ -2,42 +2,66 @@
 "use strict";
 
 const HEAD = `
-{fetchurl, linkFarm}: rec {
+{fetchurl, linkFarm, fetchgit}: rec {
   offline_cache = linkFarm "offline" packages;
   packages = [
 `.trim();
 
 function generateNix(lockedDependencies) {
   let found = {};
+  let splitOnLastAt = function(text) {
+    var index = text.lastIndexOf('@');
+    return (index === -1) ? [text] : [text.slice(0, index), text.slice(index + 1)]
+  }
 
   console.log(HEAD)
 
   for (var depRange in lockedDependencies) {
     let dep = lockedDependencies[depRange];
 
-    let name = depRange.split("@")[0];
     let version = dep["version"];
-    let file_name = name + "-" + version + ".tgz";
+    let resolved_string = dep["resolved"]
 
-    if (found.hasOwnProperty(file_name)) {
-      console.error("HUH! Found " + file_name + " more than once!");
+    if (found.hasOwnProperty(resolved_string)) {
+      console.error("HUH! Found " + resolved_string + " more than once!");
       console.error("Ignoring second declaration..");
       continue;
     } else {
-      found[file_name] = null;
+      found[resolved_string] = null;
     }
+    
+    let [url, sha1] = resolved_string.split("#");
+    let split_array = depRange.split("@")
 
-    let [url, sha1] = dep["resolved"].split("#");
-
-    console.log(`
-    {
-      name = "${file_name}";
-      path = fetchurl {
+    //The dependency is git because it looks like 'XXXX@git'
+    if(split_array.length > 1 && split_array[1].startsWith("git")) {
+      let git_repo_name = split_array[0]
+      console.log(`
+      {
+        name = "${git_repo_name}";
+        path = fetchgit {
+          url  = "${url}";
+          rev  = "${sha1}";
+        };
+      }`)
+    } else {
+      //names in the yarn.lock can have `@` in them, so split on the last one.
+      //Eg @types/lodash@^4.14.61
+      let name_version_array = splitOnLastAt(depRange);
+      //names with @ or / are rejected, so we need to do some fixing up. (Not sure if this is right.)
+      let name = name_version_array[0].replace(/[@]/g, '').replace(/[/]/g, '_');
+      let file_name = name + "-" + version + ".tgz";
+      console.log(`
+      {
         name = "${file_name}";
-        url  = "${url}";
-        sha1 = "${sha1}";
-      };
-    }`)
+        path = fetchurl {
+          name = "${file_name}";
+          url  = "${url}";
+          sha1 = "${sha1}";
+        };
+      }`)
+
+    }
   }
 
   console.log("  ];")
