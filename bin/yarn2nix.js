@@ -15,7 +15,10 @@ function generateNix(lockedDependencies) {
   for (var depRange in lockedDependencies) {
     let dep = lockedDependencies[depRange];
 
-    let name = depRange.split("@")[0];
+    let depRangeParts = depRange.split('@');
+    let name = depRangeParts[depRangeParts[0]!=""?0:1];
+    let nameParts = name.split('/')
+    name = nameParts[nameParts.length-1];
     let version = dep["version"];
     let file_name = name + "-" + version + ".tgz";
 
