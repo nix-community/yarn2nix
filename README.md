@@ -1,4 +1,5 @@
 # yarn2nix
+<img src="https://travis-ci.org/moretea/yarn2nix.svg?branch=master">
 
 Converts `yarn.lock` files into nix expression.
 
