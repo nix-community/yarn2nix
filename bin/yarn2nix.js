@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 "use strict";
 
+const path = require("path");
+
 const HEAD = `
 {fetchurl, linkFarm}: rec {
   offline_cache = linkFarm "offline" packages;
@@ -16,11 +18,8 @@ function generateNix(lockedDependencies) {
     let dep = lockedDependencies[depRange];
 
     let depRangeParts = depRange.split('@');
-    let name = depRangeParts[depRangeParts[0]!=""?0:1];
-    let nameParts = name.split('/')
-    name = nameParts[nameParts.length-1];
-    let version = dep["version"];
-    let file_name = name + "-" + version + ".tgz";
+    let [url, sha1] = dep["resolved"].split("#");
+    let file_name = path.basename(url)
 
     if (found.hasOwnProperty(file_name)) {
       console.error("HUH! Found " + file_name + " more than once!");
@@ -30,7 +29,6 @@ function generateNix(lockedDependencies) {
       found[file_name] = null;
     }
 
-    let [url, sha1] = dep["resolved"].split("#");
 
     console.log(`
     {
