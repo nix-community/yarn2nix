@@ -119,6 +119,7 @@ rec {
 
         mkdir -p $out/node_modules
         ln -s ${deps}/node_modules/* $out/node_modules/
+        ln -s ${deps}/node_modules/.bin $out/node_modules/
 
         if [ -d $out/node_modules/${npmPackageName} ]; then
           echo "Error! There is already an ${npmPackageName} package in the top level node_modules dir!"
