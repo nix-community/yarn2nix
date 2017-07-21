@@ -1,33 +1,43 @@
-{ pkgs ? (import <nixpkgs> {}), nodejs ? pkgs.nodejs-7_x}:
-with pkgs;
+{ pkgs ? import <nixpkgs> {}
+, nodejs ? pkgs.nodejs
+}:
 
 rec {
-  inherit (pkgs) yarn;
+  inherit (pkgs) stdenv lib yarn fetchurl linkFarm;
+
+  unlessNull = item: alt:
+    if item == null then alt else item;
 
   # Generates the yarn.nix from the yarn.lock file
-  generateYarnNix = yarnLock:
+  mkYarnNix = yarnLock:
     pkgs.runCommand "yarn.nix" {}
       "${yarn2nix}/bin/yarn2nix ${yarnLock} > $out";
 
-  loadOfflineCache = yarnNix:
+  # Loads the generated offline cache. This will be used by yarn as
+  # the package source.
+  importOfflineCache = yarnNix:
     let
-      pkg = pkgs.callPackage yarnNix {};
+      pkg = import yarnNix { inherit fetchurl linkFarm; };
     in
       pkg.offline_cache;
 
-  buildYarnPackageDeps = {
+  defaultYarnFlags = [
+    "--offline"
+    "--frozen-lockfile"
+    "--ignore-engines"
+    "--ignore-scripts"
+  ];
+
+  mkYarnModules = {
     name,
-    packageJson,
+    packageJSON,
     yarnLock,
-    yarnNix ? null,
+    yarnNix ? mkYarnNix yarnLock,
+    yarnFlags ? defaultYarnFlags,
     pkgConfig ? {},
-    yarnFlags ? []
   }:
     let
-      yarnNix_ =
-        if yarnNix == null then (generateYarnNix yarnLock) else yarnNix;
-      offlineCache =
-        loadOfflineCache yarnNix_;
+      offlineCache = importOfflineCache yarnNix;
       extraBuildInputs = (lib.flatten (builtins.map (key:
         pkgConfig.${key} . buildInputs or []
       ) (builtins.attrNames pkgConfig)));
@@ -43,8 +53,7 @@ rec {
       ) (builtins.attrNames pkgConfig));
     in
     stdenv.mkDerivation {
-      name = "${name}-modules";
-
+      inherit name;
       phases = ["buildPhase"];
       buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
 
@@ -52,7 +61,7 @@ rec {
         # Yarn writes cache directories etc to $HOME.
         export HOME=`pwd`/yarn_home
 
-        cp ${packageJson} ./package.json
+        cp ${packageJSON} ./package.json
         cp ${yarnLock} ./yarn.lock
         chmod +w ./yarn.lock
 
@@ -71,42 +80,37 @@ rec {
       '';
     };
 
-  buildYarnPackage = {
-    name,
+  mkYarnPackage = {
+    name ? null,
     src,
-    packageJson,
-    yarnLock,
-    yarnNix ? null,
-    extraBuildInputs ? [],
+    packageJSON ? src + "/package.json",
+    yarnLock ? src + "/yarn.lock",
+    yarnNix ? mkYarnNix yarnLock,
+    yarnFlags ? defaultYarnFlags,
     pkgConfig ? {},
-    extraYarnFlags ? [],
+    extraBuildInputs ? [],
+    publishBinsFor ? null,
     ...
-  }@args:
+  }@attrs:
     let
-      yarnFlags = [
-        "--offline"
-        "--frozen-lockfile"
-        "--ignore-engines"
-        "--ignore-scripts"
-      ] ++ extraYarnFlags;
-      deps = buildYarnPackageDeps {
-        inherit name packageJson yarnLock yarnNix pkgConfig yarnFlags;
+      package = lib.importJSON packageJSON;
+      pname = package.name;
+      version = package.version;
+      deps = mkYarnModules {
+        name = "${pname}-modules-${version}";
+        inherit packageJSON yarnLock yarnNix yarnFlags pkgConfig;
       };
-      npmPackageName = if lib.hasAttr "npmPackageName" args
-        then args.npmPackageName
-        else (builtins.fromJSON (builtins.readFile "${src}/package.json")).name ;
-      publishBinsFor = if lib.hasAttr "publishBinsFor" args
-        then args.publishBinsFor
-        else [npmPackageName];
-    in stdenv.mkDerivation rec {
-      inherit name;
+      publishBinsFor_ = unlessNull publishBinsFor [pname];
+    in stdenv.mkDerivation (attrs // {
       inherit src;
+
+      name = unlessNull name "${pname}-${version}";
 
       buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
 
-      phases = ["unpackPhase" "yarnPhase" "fixupPhase"];
+      configurePhase = attrs.configurePhase or ''
+        runHook preConfigure
 
-      yarnPhase = ''
         if [ -d node_modules ]; then
           echo "Node modules dir present. Removing."
           rm -rf node_modules
@@ -121,26 +125,39 @@ rec {
         ln -s ${deps}/node_modules/* $out/node_modules/
         ln -s ${deps}/node_modules/.bin $out/node_modules/
 
-        if [ -d $out/node_modules/${npmPackageName} ]; then
-          echo "Error! There is already an ${npmPackageName} package in the top level node_modules dir!"
+        if [ -d $out/node_modules/${pname} ]; then
+          echo "Error! There is already an ${pname} package in the top level node_modules dir!"
           exit 1
         fi
 
-        mkdir $out/node_modules/${npmPackageName}/
-        cp -r * $out/node_modules/${npmPackageName}/
+        runHook postConfigure
       '';
 
-      preFixup = ''
+      # Replace this phase on frontend packages where only the generated
+      # files are an interesting output.
+      installPhase = attrs.installPhase or ''
+        runHook preInstall
+
+        mkdir $out/node_modules/${pname}/
+        cp -r * $out/node_modules/${pname}/
+
         mkdir $out/bin
-        node ${./nix/fixup_bin.js} $out ${lib.concatStringsSep " " publishBinsFor}
-      '';
-  };
+        node ${./nix/fixup_bin.js} $out ${lib.concatStringsSep " " publishBinsFor_}
 
-  yarn2nix = buildYarnPackage {
-    name = "yarn2nix";
+        runHook postInstall
+      '';
+
+      passthru = {
+        inherit package deps;
+      };
+
+      # TODO: populate meta automatically
+    });
+
+  yarn2nix = mkYarnPackage {
     src = ./.;
-    packageJson = ./package.json;
-    yarnLock = ./yarn.lock;
+    # yarn2nix is the only package that requires the yarnNix option.
+    # All the other projects can auto-generate that file.
     yarnNix = ./yarn.nix;
   };
 }
