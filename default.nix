@@ -111,21 +111,21 @@ rec {
       configurePhase = attrs.configurePhase or ''
         runHook preConfigure
 
-        if [ -d node_modules ]; then
-          echo "Node modules dir present. Removing."
-          rm -rf node_modules
-        fi
-
         if [ -d npm-packages-offline-cache ]; then
           echo "npm-pacakges-offline-cache dir present. Removing."
           rm -rf npm-packages-offline-cache
         fi
 
-        mkdir -p $out/node_modules
-        ln -s ${deps}/node_modules/* $out/node_modules/
-        ln -s ${deps}/node_modules/.bin $out/node_modules/
+        if [ -d node_modules ]; then
+          echo "Node modules dir present. Removing."
+          rm -rf node_modules
+        fi
 
-        if [ -d $out/node_modules/${pname} ]; then
+        mkdir -p node_modules
+        ln -s ${deps}/node_modules/* node_modules/
+        ln -s ${deps}/node_modules/.bin node_modules/
+
+        if [ -d node_modules/${pname} ]; then
           echo "Error! There is already an ${pname} package in the top level node_modules dir!"
           exit 1
         fi
@@ -138,8 +138,10 @@ rec {
       installPhase = attrs.installPhase or ''
         runHook preInstall
 
-        mkdir $out/node_modules/${pname}/
-        cp -r * $out/node_modules/${pname}/
+        mkdir -p $out
+        cp -r node_modules $out/node_modules
+        cp -r . $out/node_modules/${pname}
+        rm -rf $out/node_modules/${pname}/node_modules
 
         mkdir $out/bin
         node ${./nix/fixup_bin.js} $out ${lib.concatStringsSep " " publishBinsFor_}
