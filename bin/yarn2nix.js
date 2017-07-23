@@ -22,8 +22,6 @@ function generateNix(lockedDependencies) {
     let file_name = path.basename(url)
 
     if (found.hasOwnProperty(file_name)) {
-      console.error("HUH! Found " + file_name + " more than once!");
-      console.error("Ignoring second declaration..");
       continue;
     } else {
       found[file_name] = null;
