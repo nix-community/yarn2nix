@@ -83,8 +83,8 @@ rec {
   # This can be used as a shellHook in mkYarnPackage. It brings the built node_modules into
   # the shell-hook environment.
   linkNodeModulesHook = ''
-    if [ -d node_modules ]; then
-      echo "node_modules dir present. Replacing."
+    if [[ -d node_modules || -L node_modules ]]; then
+      echo "./node_modules is present. Replacing."
       rm -rf node_modules
     fi
 
@@ -129,8 +129,8 @@ rec {
           rm -rf npm-packages-offline-cache
         fi
 
-        if [ -d node_modules ]; then
-          echo "node_modules dir present. Removing."
+        if [[ -d node_modules || -L node_modules ]]; then
+          echo "./node_modules is present. Removing."
           rm -rf node_modules
         fi
 
