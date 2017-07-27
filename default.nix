@@ -1,9 +1,10 @@
 { pkgs ? import <nixpkgs> {}
 , nodejs ? pkgs.nodejs
+, yarn ? pkgs.yarn
 }:
 
 rec {
-  inherit (pkgs) stdenv lib yarn fetchurl linkFarm;
+  inherit (pkgs) stdenv lib fetchurl linkFarm;
 
   unlessNull = item: alt:
     if item == null then alt else item;
