@@ -81,6 +81,17 @@ rec {
       '';
     };
 
+  # This can be used as a shellHook in mkYarnPackage. It brings the built node_modules into
+  # the shell-hook environment.
+  linkNodeModulesHook = ''
+    if [[ -d node_modules || -L node_modules ]]; then
+      echo "./node_modules is present. Replacing."
+      rm -rf node_modules
+    fi
+
+    ln -s "$node_modules" node_modules
+  '';
+
   mkYarnPackage = {
     name ? null,
     src,
@@ -109,6 +120,8 @@ rec {
 
       buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
 
+      node_modules = deps + "/node_modules";
+
       configurePhase = attrs.configurePhase or ''
         runHook preConfigure
 
@@ -117,14 +130,14 @@ rec {
           rm -rf npm-packages-offline-cache
         fi
 
-        if [ -d node_modules ]; then
-          echo "Node modules dir present. Removing."
+        if [[ -d node_modules || -L node_modules ]]; then
+          echo "./node_modules is present. Removing."
           rm -rf node_modules
         fi
 
         mkdir -p node_modules
-        ln -s ${deps}/node_modules/* node_modules/
-        ln -s ${deps}/node_modules/.bin node_modules/
+        ln -s $node_modules/* node_modules/
+        ln -s $node_modules/.bin node_modules/
 
         if [ -d node_modules/${pname} ]; then
           echo "Error! There is already an ${pname} package in the top level node_modules dir!"
