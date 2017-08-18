@@ -113,7 +113,7 @@ rec {
         inherit packageJSON yarnLock yarnNix yarnFlags pkgConfig;
       };
       publishBinsFor_ = unlessNull publishBinsFor [pname];
-    in stdenv.mkDerivation (attrs // {
+    in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig"] // {
       inherit src;
 
       name = unlessNull name "${pname}-${version}";
