@@ -30,7 +30,7 @@ Converts `yarn.lock` files into nix expression.
     with (import <nixpkgs> {});
     with (import /home/maarten/code/nixos/yarn2nix { inherit pkgs; });
     rec {
-      weave-front-end = buildYarnPackage {
+      weave-front-end = mkYarnPackage {
         name = "weave-front-end";
         src = ./.;
         packageJson = ./package.json;
