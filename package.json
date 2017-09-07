@@ -6,16 +6,13 @@
   "repository": ".",
   "author": "Maarten Hoogendoorn <maarten@moretea.nl>",
   "license": "MIT",
-
   "scripts": {
     "yarn2nix": "bin/yarn2nix.js"
   },
-
   "bin": {
     "yarn2nix": "bin/yarn2nix.js"
   },
-
   "dependencies": {
-    "yarn": "0.19.0"
+    "yarn-lockfile": "^1.1.1"
   }
 }

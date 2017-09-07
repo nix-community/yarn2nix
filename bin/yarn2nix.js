@@ -45,8 +45,13 @@ function generateNix(lockedDependencies) {
 
 const yarnLock = process.argv[2] || "yarn.lock";
 const fs = require("fs");
-const YarnfileParser = require("yarn/lib/lockfile/parse.js").default;
-const yarn_lock_file_content = fs.readFileSync(yarnLock).toString();
+const lockfile = require('yarn-lockfile')
 
-const lockedDependencies  = YarnfileParser(yarn_lock_file_content)
-generateNix(lockedDependencies);
+let file = fs.readFileSync('yarn.lock', 'utf8')
+let json = lockfile.parse(file)
+
+if (json.type != "success") {
+  throw new Error("yarn.lock parse error")
+}
+
+generateNix(json.object);
