@@ -47,7 +47,7 @@ const yarnLock = process.argv[2] || "yarn.lock";
 const fs = require("fs");
 const lockfile = require('yarn-lockfile')
 
-let file = fs.readFileSync('yarn.lock', 'utf8')
+let file = fs.readFileSync(yarnLock, 'utf8')
 let json = lockfile.parse(file)
 
 if (json.type != "success") {
