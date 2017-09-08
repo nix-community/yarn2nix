@@ -1,0 +1,43 @@
+{
+  "name": "microservices-demo-front-end",
+  "version": "0.0.1",
+  "description": "Front end for microservices demo application.",
+  "main": "server.js",
+  "bin": { "front-end": "server.js"},
+  "scripts": {
+    "test": "istanbul cover node_modules/.bin/_mocha -- test/*_test.js test/api/*_test.js",
+    "coverage": "istanbul cover --report cobertura node_modules/.bin/_mocha -- test/*_test.js test/api/*_test.js && mocha test/*_test.js test/api/*_test.js --reporter mocha-junit-reporter --reporter-options mochaFile=./results/test-results.xml",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/weaveworks/microservices-demo"
+  },
+  "contributors": [
+    "Ian Crosby <ian.daniel.crosby@gmail.com>",
+    "Carlos León <mail@carlosleon.info> (carlosleon.info)"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "async": "^1.5.2",
+    "body-parser": "^1.15.1",
+    "cookie-parser": "^1.4.3",
+    "express": "^4.13.4",
+    "express-session": "^1.13.0",
+    "finalhandler": "^0.4.1",
+    "request": "^2.72.0",
+    "serve-static": "^1.10.2",
+    "prom-client": "^6.3.0",
+    "morgan": "^1.7.0",
+    "connect-redis": "^3.2.0"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "chai-http": "^3.0.0",
+    "sinon": "^1.17.5",
+    "mocha": "^3.0.0",
+    "mocha-junit-reporter": "^1.12.1",
+    "istanbul": "^0.4.4",
+    "mongodb": "^2.2.5"
+  }
+}
