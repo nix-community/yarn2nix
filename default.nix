@@ -5,6 +5,7 @@
 
 pkgs.lib.fix (self: rec {
   inherit (pkgs) stdenv lib fetchurl linkFarm;
+  inherit yarn;
 
   unlessNull = item: alt:
     if item == null then alt else item;
