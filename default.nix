@@ -40,6 +40,8 @@ pkgs.lib.fix (self: rec {
   }:
     let
       offlineCache = importOfflineCache yarnNix;
+      locals = (import yarnNix { inherit fetchurl linkFarm; }).localPackages or [];
+      copyCommands = lib.concatMapStrings (l: "mkdir -p \$(dirname ${l.name}); cp -R ${l.path} ${l.name};") locals;
       extraBuildInputs = (lib.flatten (builtins.map (key:
         pkgConfig.${key} . buildInputs or []
       ) (builtins.attrNames pkgConfig)));
@@ -68,6 +70,13 @@ pkgs.lib.fix (self: rec {
         chmod +w ./yarn.lock
 
         yarn config --offline set yarn-offline-mirror ${offlineCache}
+        yarn config --offline set yarn-offline-mirror-pruning false
+        yarn config set yarn-offline-mirror-pruning false
+
+        ls -l
+        /usr/local/bin/tree -l ${offlineCache}
+
+        ${copyCommands}
 
         # Do not look up in the registry, but in the offline cache.
         # TODO: Ask upstream to fix this mess.
