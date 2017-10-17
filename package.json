@@ -13,6 +13,6 @@
     "yarn2nix": "bin/yarn2nix.js"
   },
   "dependencies": {
-    "yarn-lockfile": "^1.1.1"
+    "@yarnpkg/lockfile": "^1.0.0"
   }
 }

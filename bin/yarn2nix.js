@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 "use strict";
 
+const fs = require("fs");
+const lockfile = require('@yarnpkg/lockfile')
 const path = require("path");
 
 const HEAD = `
@@ -43,9 +45,9 @@ function generateNix(lockedDependencies) {
   console.log("}")
 }
 
+// Main
+
 const yarnLock = process.argv[2] || "yarn.lock";
-const fs = require("fs");
-const lockfile = require('yarn-lockfile')
 
 let file = fs.readFileSync(yarnLock, 'utf8')
 let json = lockfile.parse(file)
