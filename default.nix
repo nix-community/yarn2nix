@@ -166,7 +166,7 @@ pkgs.lib.fix (self: rec {
 
       passthru = {
         inherit package deps;
-      };
+      } // (attrs.passthru or {});
 
       # TODO: populate meta automatically
     });
