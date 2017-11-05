@@ -60,6 +60,8 @@ pkgs.lib.fix (self: rec {
       buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
 
       buildPhase = ''
+        runHook preBuild
+
         # Yarn writes cache directories etc to $HOME.
         export HOME=`pwd`/yarn_home
 
@@ -79,6 +81,8 @@ pkgs.lib.fix (self: rec {
         mkdir $out
         mv node_modules $out/
         patchShebangs $out
+
+        runHook postBuild
       '';
     };
 
