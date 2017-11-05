@@ -10,6 +10,9 @@ pkgs.lib.fix (self: rec {
   unlessNull = item: alt:
     if item == null then alt else item;
 
+  # Create a file reference based on it's content
+  writeCAS = path: with builtins; toFile (baseNameOf (toString path)) (readFile path);
+
   # Generates the yarn.nix from the yarn.lock file
   mkYarnNix = yarnLock:
     pkgs.runCommand "yarn.nix" {}
@@ -101,8 +104,8 @@ pkgs.lib.fix (self: rec {
   mkYarnPackage = {
     name ? null,
     src,
-    packageJSON ? src + "/package.json",
-    yarnLock ? src + "/yarn.lock",
+    packageJSON ? writeCAS (src + "/package.json"),
+    yarnLock ? writeCAS (src + "/yarn.lock"),
     yarnNix ? mkYarnNix yarnLock,
     yarnFlags ? defaultYarnFlags,
     yarnPreBuild ? "",
