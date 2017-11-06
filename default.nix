@@ -3,9 +3,10 @@
 , yarn ? pkgs.yarn
 }:
 
-pkgs.lib.fix (self: rec {
+let
   inherit (pkgs) stdenv lib fetchurl linkFarm;
   inherit yarn;
+in rec {
 
   unlessNull = item: alt:
     if item == null then alt else item;
@@ -181,6 +182,4 @@ pkgs.lib.fix (self: rec {
     # All the other projects can auto-generate that file.
     yarnNix = ./yarn.nix;
   };
-
-  tests = import ./tests { yarn2nix = self; };
-})
+}
