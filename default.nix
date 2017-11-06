@@ -5,8 +5,9 @@
 
 let
   inherit (pkgs) stdenv lib fetchurl linkFarm;
-  inherit yarn;
 in rec {
+  # Export yarn again to make it easier to find out which yarn was used.
+  inherit yarn;
 
   unlessNull = item: alt:
     if item == null then alt else item;
