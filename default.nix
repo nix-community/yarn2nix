@@ -3,8 +3,10 @@
 , yarn ? pkgs.yarn
 }:
 
-pkgs.lib.fix (self: rec {
+let
   inherit (pkgs) stdenv lib fetchurl linkFarm;
+in rec {
+  # Export yarn again to make it easier to find out which yarn was used.
   inherit yarn;
 
   unlessNull = item: alt:
@@ -181,6 +183,4 @@ pkgs.lib.fix (self: rec {
     # All the other projects can auto-generate that file.
     yarnNix = ./yarn.nix;
   };
-
-  tests = import ./tests { yarn2nix = self; };
-})
+}
