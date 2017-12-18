@@ -39,6 +39,7 @@ in rec {
     yarnNix ? mkYarnNix yarnLock,
     yarnFlags ? defaultYarnFlags,
     pkgConfig ? {},
+    preBuild ? "",
   }:
     let
       offlineCache = importOfflineCache yarnNix;
@@ -57,15 +58,17 @@ in rec {
       ) (builtins.attrNames pkgConfig));
     in
     stdenv.mkDerivation {
-      inherit name;
-      phases = ["buildPhase"];
+      inherit name preBuild;
+      phases = ["configurePhase" "buildPhase"];
       buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
+
+      configurePhase = ''
+        # Yarn writes cache directories etc to $HOME.
+        export HOME=$PWD/yarn_home
+      '';
 
       buildPhase = ''
         runHook preBuild
-
-        # Yarn writes cache directories etc to $HOME.
-        export HOME=`pwd`/yarn_home
 
         cp ${packageJSON} ./package.json
         cp ${yarnLock} ./yarn.lock
@@ -83,8 +86,6 @@ in rec {
         mkdir $out
         mv node_modules $out/
         patchShebangs $out
-
-        runHook postBuild
       '';
     };
 
@@ -106,6 +107,7 @@ in rec {
     yarnLock ? src + "/yarn.lock",
     yarnNix ? mkYarnNix yarnLock,
     yarnFlags ? defaultYarnFlags,
+    yarnPreBuild ? "",
     pkgConfig ? {},
     extraBuildInputs ? [],
     publishBinsFor ? null,
@@ -117,6 +119,7 @@ in rec {
       version = package.version;
       deps = mkYarnModules {
         name = "${pname}-modules-${version}";
+        preBuild = yarnPreBuild;
         inherit packageJSON yarnLock yarnNix yarnFlags pkgConfig;
       };
       publishBinsFor_ = unlessNull publishBinsFor [pname];
