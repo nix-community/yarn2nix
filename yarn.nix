@@ -12,11 +12,11 @@
     }
 
     {
-      name = "yarn-lockfile-1.1.1.tgz";
+      name = "docopt-0.6.2.tgz";
       path = fetchurl {
-        name = "yarn-lockfile-1.1.1.tgz";
-        url  = "https://registry.yarnpkg.com/yarn-lockfile/-/yarn-lockfile-1.1.1.tgz";
-        sha1 = "3e58898c601f3d2511e2b2abb4638088918849e9";
+        name = "docopt-0.6.2.tgz";
+        url  = "https://registry.yarnpkg.com/docopt/-/docopt-0.6.2.tgz";
+        sha1 = "b28e9e2220da5ec49f7ea5bb24a47787405eeb11";
       };
     }
   ];

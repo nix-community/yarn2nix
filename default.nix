@@ -15,7 +15,7 @@ in rec {
   # Generates the yarn.nix from the yarn.lock file
   mkYarnNix = yarnLock:
     pkgs.runCommand "yarn.nix" {}
-      "${yarn2nix}/bin/yarn2nix ${yarnLock} > $out";
+      "${yarn2nix}/bin/yarn2nix --lockfile ${yarnLock} --no-patch > $out";
 
   # Loads the generated offline cache. This will be used by yarn as
   # the package source.
