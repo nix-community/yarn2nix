@@ -1,0 +1,7 @@
+{
+  "name": "daedalus",
+  "version": "0.8.0",
+  "dependencies": {
+    "aes-js": "2.1.1"
+  }
+}
