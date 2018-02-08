@@ -2,18 +2,29 @@
   "name": "yarn2nix",
   "version": "0.1.0",
   "description": "Convert packages.json and yarn.lock into a Nix expression that downloads all the dependencies",
-  "main": "index.js",
+  "main": "./lib/index.js",
   "repository": ".",
   "author": "Maarten Hoogendoorn <maarten@moretea.nl>",
   "license": "MIT",
   "scripts": {
-    "yarn2nix": "bin/yarn2nix.js"
+    "eslint": "eslint -c .eslintrc.json \"./bin/**/*.js\" \"./lib/**/*.js\" --fix",
+    "inspect": "node --inspect ./bin/yarn2nix.js",
+    "inspect-brk": "node --inspect-brk ./bin/yarn2nix.js",
+    "lint": "npm run prettier && npm run eslint && flow check",
+    "prettier": "prettier \"./bin/**/*.js\" \"./lib/**/*.js\" ./README.md --write",
+    "test": "nix-build --expr 'with import <nixpkgs> { overlays = [(import ./nix/overlay.nix)]; }; import ./tests { yarn2nix = (import ./. { inherit pkgs; }); inherit lib; }'",
+    "yarn2nix": "./bin/yarn2nix.js"
   },
   "bin": {
-    "yarn2nix": "bin/yarn2nix.js"
+    "yarn2nix": "./bin/yarn2nix.js"
   },
   "dependencies": {
-    "@yarnpkg/lockfile": "^1.0.0",
-    "docopt": "^0.6.2"
+    "@yarnpkg/lockfile": "1.0.0",
+    "docopt": "0.6.2",
+    "indent-string": "3.2.0",
+    "strip-indent": "2.0.0"
+  },
+  "prettier": {
+    "singleQuote": true
   }
 }

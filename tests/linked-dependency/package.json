@@ -1,0 +1,9 @@
+{
+  "name": "linked-dependency",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "local-file-dependency": "link:../local-file-dependency"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "local-file-dependency",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "yarn2nix-example-a": "file:../yarn2nix-example-a"
+  }
+}

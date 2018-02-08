@@ -1,0 +1,3 @@
+[submodule "tests/yarn2nix-example-a"]
+	path = tests/yarn2nix-example-a
+	url = git@github.com:eqyiel/yarn2nix-example-a.git

@@ -4,7 +4,7 @@
 }:
 
 let
-  inherit (pkgs) stdenv lib fetchurl linkFarm;
+  inherit (pkgs) stdenv lib fetchurl linkFarm runCommand gitMinimal;
 in rec {
   # Export yarn again to make it easier to find out which yarn was used.
   inherit yarn;
@@ -13,30 +13,40 @@ in rec {
     if item == null then alt else item;
 
   # Generates the yarn.nix from the yarn.lock file
-  mkYarnNix = yarnLock:
-    pkgs.runCommand "yarn.nix" {}
-      "${yarn2nix}/bin/yarn2nix --lockfile ${yarnLock} --no-patch > $out";
+  mkYarnNix = { yarnLock, src }:
+    runCommand "yarn.nix" {} ''
+      ${yarn2nix}/bin/yarn2nix \
+        --resolve-relative-to ${src} \
+        --lockfile ${yarnLock} \
+        --no-patch > $out
+    '';
+
+  createTarball = src: runCommand "yarn2nix-archive.tar" {} ''
+    export HOME=$TMPDIR
+    ${yarn}/bin/yarn pack ${lib.escapeShellArgs defaultYarnFlags} -f $TMPDIR/yarn2nix-archive.tar.gz --cwd ${src}
+    gunzip $TMPDIR/yarn2nix-archive.tar.gz > $out
+  '';
 
   # Loads the generated offline cache. This will be used by yarn as
   # the package source.
-  importOfflineCache = yarnNix:
-    let
-      pkg = import yarnNix { inherit fetchurl linkFarm; };
-    in
-      pkg.offline_cache;
+  importOfflineCache = yarnNix: (import yarnNix {
+    inherit fetchurl linkFarm createTarball;
+    inherit (builtins) fetchGit;
+  });
 
   defaultYarnFlags = [
     "--offline"
     "--frozen-lockfile"
     "--ignore-engines"
     "--ignore-scripts"
+    "--skip-integrity-check"
   ];
 
   mkYarnModules = {
     name,
     packageJSON,
     yarnLock,
-    yarnNix ? mkYarnNix yarnLock,
+    yarnNix,
     yarnFlags ? defaultYarnFlags,
     pkgConfig ? {},
     preBuild ? "",
@@ -60,7 +70,8 @@ in rec {
     stdenv.mkDerivation {
       inherit name preBuild;
       phases = ["configurePhase" "buildPhase"];
-      buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
+      buildInputs = [ yarn nodejs gitMinimal ]
+        ++ extraBuildInputs;
 
       configurePhase = ''
         # Yarn writes cache directories etc to $HOME.
@@ -74,11 +85,20 @@ in rec {
         cp ${yarnLock} ./yarn.lock
         chmod +w ./yarn.lock
 
-        yarn config --offline set yarn-offline-mirror ${offlineCache}
+        yarn config --offline set yarn-offline-mirror ${offlineCache.mirror}
 
-        # Do not look up in the registry, but in the offline cache.
-        # TODO: Ask upstream to fix this mess.
-        sed -i -E 's|^(\s*resolved\s*")https?://.*/|\1|' yarn.lock
+        ${lib.concatStringsSep
+          "\n"
+          (builtins.map (element:
+            let
+              replacePeriods = lib.replaceStrings ["."] ["\\."];
+              oldPath = replacePeriods element.oldPath;
+              newPath = replacePeriods element.path;
+            in ''
+              sed -i 's%${(oldPath)}%${newPath}%' ./yarn.lock ./package.json
+            '')
+              offlineCache.localPackages)}
+
         yarn install ${lib.escapeShellArgs yarnFlags}
 
         ${lib.concatStringsSep "\n" postInstall}
@@ -105,7 +125,7 @@ in rec {
     src,
     packageJSON ? src + "/package.json",
     yarnLock ? src + "/yarn.lock",
-    yarnNix ? mkYarnNix yarnLock,
+    yarnNix ? (mkYarnNix { inherit yarnLock src; }),
     yarnFlags ? defaultYarnFlags,
     yarnPreBuild ? "",
     pkgConfig ? {},
@@ -128,7 +148,8 @@ in rec {
 
       name = unlessNull name "${pname}-${version}";
 
-      buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
+      buildInputs = [ yarn nodejs ]
+        ++ extraBuildInputs;
 
       node_modules = deps + "/node_modules";
 
@@ -146,6 +167,7 @@ in rec {
         fi
 
         mkdir -p node_modules
+
         ln -s $node_modules/* node_modules/
         ln -s $node_modules/.bin node_modules/
 
@@ -168,7 +190,7 @@ in rec {
         rm -rf $out/node_modules/${pname}/node_modules
 
         mkdir $out/bin
-        node ${./nix/fixup_bin.js} $out ${lib.concatStringsSep " " publishBinsFor_}
+        node ${./bin/fixup.js} $out ${lib.concatStringsSep " " publishBinsFor_}
 
         runHook postInstall
       '';
@@ -182,6 +204,7 @@ in rec {
 
   yarn2nix = mkYarnPackage {
     src = ./.;
+    yarnFlags = defaultYarnFlags ++ lib.singleton "--production";
     # yarn2nix is the only package that requires the yarnNix option.
     # All the other projects can auto-generate that file.
     yarnNix = ./yarn.nix;

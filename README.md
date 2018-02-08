@@ -1,8 +1,8 @@
 # yarn2nix
+
 <img src="https://travis-ci.org/moretea/yarn2nix.svg?branch=master">
 
 Converts `yarn.lock` files into nix expression.
-
 
 1. Make yarn and yarn2nix available in your shell.
    ```
@@ -16,37 +16,39 @@ Converts `yarn.lock` files into nix expression.
      yarn install
    ```
 4. Create a `yarn.nix` via:
-  ```
-    yarn2nix > yarn.nix
-  ```
+
+```
+  yarn2nix > yarn.nix
+```
 
 5. Create a `default.nix` to build your application (see the example below)
 
 ## Example `default.nix`
- 
-   For example, for the [`front-end`](https://github.com/microservices-demo/front-end) of weave's microservice reference application:
 
-  ```
-    with (import <nixpkgs> {});
-    with (import /home/maarten/code/nixos/yarn2nix { inherit pkgs; });
-    rec {
-      weave-front-end = mkYarnPackage {
-        name = "weave-front-end";
-        src = ./.;
-        packageJson = ./package.json;
-        yarnLock = ./yarn.lock;
-        # NOTE: this is optional and generated dynamically if omitted
-        yarnNix = ./yarn.nix;
-      };
-    }
-   ```
+For example, for the [`front-end`](https://github.com/microservices-demo/front-end) of weave's microservice reference application:
 
-   _note: you must modify `/home/maarten/code/nixos/yarn2nix`_
+```
+  with (import <nixpkgs> {});
+  with (import /home/maarten/code/nixos/yarn2nix { inherit pkgs; });
+  rec {
+    weave-front-end = mkYarnPackage {
+      name = "weave-front-end";
+      src = ./.;
+      packageJson = ./package.json;
+      yarnLock = ./yarn.lock;
+      # NOTE: this is optional and generated dynamically if omitted
+      yarnNix = ./yarn.nix;
+    };
+  }
+```
 
-   To make this work nicely, I exposed the express server in `server.js` as a binary:
-   1. Add a `bin` entry to `packages.json` with the value `server.js`
-   2. Add  `#!/usr/bin/env node` at the top of the file
-   3. `chmod +x server.js`
+_note: you must modify `/home/maarten/code/nixos/yarn2nix`_
+
+To make this work nicely, I exposed the express server in `server.js` as a binary:
+
+1. Add a `bin` entry to `packages.json` with the value `server.js`
+2. Add `#!/usr/bin/env node` at the top of the file
+3. `chmod +x server.js`
 
 ### Testing the example
 
@@ -55,4 +57,5 @@ Converts `yarn.lock` files into nix expression.
 3. `/nix/store/some-path-to-frontend/bin/weave-demo-frontend`
 
 ## License
+
 `yarn2nix` is released under the terms of the GPL-3.0 license.

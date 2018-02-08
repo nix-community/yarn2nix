@@ -1,0 +1,36 @@
+{
+  "parser": "babel-eslint",
+  "root": true,
+  "extends": [
+    "airbnb-base",
+    "prettier",
+    "prettier/flowtype",
+    "plugin:flowtype/recommended"
+  ],
+  "plugins": ["flowtype"],
+  "env": {
+    "browser": false,
+    "node": true
+  },
+  "rules": {
+    "flowtype/generic-spacing": 0,
+    "flowtype/space-after-type-colon": [
+      2,
+      "always",
+      { "allowLineBreak": true }
+    ],
+    "spaced-comment": [
+      "error",
+      "always",
+      {
+        "line": {
+          "markers": [":", "::"]
+        },
+        "block": {
+          "markers": [":", "::"],
+          "balanced": false
+        }
+      }
+    ]
+  }
+}

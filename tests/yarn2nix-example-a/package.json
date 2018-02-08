@@ -1,0 +1,11 @@
+{
+  "name": "yarn2nix-example-a",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:eqyiel/yarn2nix-example-a.git",
+  "author": "Ruben Maher <ruben@maher.fyi>",
+  "license": "MIT",
+  "dependencies": {
+    "yarn2nix-example-b": "git+ssh://git@github.com/eqyiel/yarn2nix-example-b.git#c41c298"
+  }
+}
