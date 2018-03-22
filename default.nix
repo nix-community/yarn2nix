@@ -12,6 +12,17 @@ in rec {
   unlessNull = item: alt:
     if item == null then alt else item;
 
+  reformatPackageName = pname:
+    let
+      # regex adapted from `validate-npm-package-name`
+      # will produce 3 parts e.g.
+      # "@someorg/somepackage" -> [ "@someorg/" "someorg" "somepackage" ]
+      # "somepackage" -> [ null null "somepackage" ]
+      parts = builtins.tail (builtins.match "^(@([^\/]+?)[\/])?([^\/]+?)$" pname);
+      # if there is no organisation we need to filter out null values.
+      non-null = builtins.filter (x: x != null) parts;
+    in builtins.concatStringsSep "-" non-null;
+
   # Generates the yarn.nix from the yarn.lock file
   mkYarnNix = yarnLock:
     pkgs.runCommand "yarn.nix" {}
@@ -115,7 +126,7 @@ in rec {
   }@attrs:
     let
       package = lib.importJSON packageJSON;
-      pname = package.name;
+      pname = reformatPackageName package.name;
       version = package.version;
       deps = mkYarnModules {
         name = "${pname}-modules-${version}";

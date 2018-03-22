@@ -7,4 +7,4 @@ let
     value = yarn2nix.mkYarnPackage { src = ./. + "/${name}"; };
   };
 in
-listToAttrs (build ["wetty" "weave-front-end"])
+listToAttrs (build ["wetty" "weave-front-end" "sendgrid-helpers"])
