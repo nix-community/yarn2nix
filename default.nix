@@ -18,7 +18,7 @@ in rec {
       # will produce 3 parts e.g.
       # "@someorg/somepackage" -> [ "@someorg/" "someorg" "somepackage" ]
       # "somepackage" -> [ null null "somepackage" ]
-      parts = builtins.tail (builtins.match "^(@([^\/]+?)[\/])?([^\/]+?)$" pname);
+      parts = builtins.tail (builtins.match "^(@([^/]+)/)?([^/]+)$" pname);
       # if there is no organisation we need to filter out null values.
       non-null = builtins.filter (x: x != null) parts;
     in builtins.concatStringsSep "-" non-null;
