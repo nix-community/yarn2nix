@@ -51,6 +51,7 @@ in rec {
     yarnFlags ? defaultYarnFlags,
     pkgConfig ? {},
     preBuild ? "",
+    workspaceDependencies ? {},
   }:
     let
       offlineCache = importOfflineCache yarnNix;
@@ -67,7 +68,9 @@ in rec {
         else
           ""
       ) (builtins.attrNames pkgConfig));
-    in
+      workspaceDependencyPaths = lib.mapAttrsToList (name: path: "${path}/node_modules/${name}") workspaceDependencies;
+      workspaceDependencyAdd = "yarn add ${lib.concatMapStringsSep " " (path: "file:${path}") workspaceDependencyPaths} ${lib.escapeShellArgs yarnFlags}";
+in
     stdenv.mkDerivation {
       inherit name preBuild;
       phases = ["configurePhase" "buildPhase"];
@@ -83,13 +86,14 @@ in rec {
 
         cp ${packageJSON} ./package.json
         cp ${yarnLock} ./yarn.lock
-        chmod +w ./yarn.lock
+        chmod +w ./yarn.lock ./package.json
 
         yarn config --offline set yarn-offline-mirror ${offlineCache}
 
         # Do not look up in the registry, but in the offline cache.
         # TODO: Ask upstream to fix this mess.
         sed -i -E 's|^(\s*resolved\s*")https?://.*/|\1|' yarn.lock
+        ${lib.optionalString (workspaceDependencyPaths != []) workspaceDependencyAdd}
         yarn install ${lib.escapeShellArgs yarnFlags}
 
         ${lib.concatStringsSep "\n" postInstall}
@@ -97,6 +101,7 @@ in rec {
         mkdir $out
         mv node_modules $out/
         patchShebangs $out
+        mv ./package.json $out/
       '';
     };
 
@@ -122,6 +127,7 @@ in rec {
     pkgConfig ? {},
     extraBuildInputs ? [],
     publishBinsFor ? null,
+    workspaceDependencies ? {},
     ...
   }@attrs:
     let
@@ -131,10 +137,10 @@ in rec {
       deps = mkYarnModules {
         name = "${pname}-modules-${version}";
         preBuild = yarnPreBuild;
-        inherit packageJSON yarnLock yarnNix yarnFlags pkgConfig;
+        inherit packageJSON yarnLock yarnNix yarnFlags pkgConfig workspaceDependencies;
       };
       publishBinsFor_ = unlessNull publishBinsFor [pname];
-    in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig"] // {
+    in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig" "workspaceDependencies"] // {
       inherit src;
 
       name = unlessNull name "${pname}-${version}";
@@ -159,6 +165,10 @@ in rec {
         mkdir -p node_modules
         ln -s $node_modules/* node_modules/
         ln -s $node_modules/.bin node_modules/
+
+        rm package.json
+        # Patched package.json with workspace dependencies added
+        ln -s ${deps}/package.json .
 
         if [ -d node_modules/${pname} ]; then
           echo "Error! There is already an ${pname} package in the top level node_modules dir!"
