@@ -137,9 +137,14 @@ in
       deps = mkYarnModules {
         name = "${pname}-modules-${version}";
         preBuild = yarnPreBuild;
-        inherit packageJSON yarnLock yarnNix yarnFlags pkgConfig workspaceDependencies;
+        workspaceDependencies = workspaceDependenciesTransitive;
+        inherit packageJSON yarnLock yarnNix yarnFlags pkgConfig;
       };
       publishBinsFor_ = unlessNull publishBinsFor [pname];
+      workspaceDependenciesTransitive = lib.foldl
+        (a: b: a // b)
+        {}
+        (lib.mapAttrsToList (name: dep: dep.workspaceDependencies) workspaceDependencies ++ [workspaceDependencies]);
     in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig" "workspaceDependencies"] // {
       inherit src;
 
@@ -199,6 +204,7 @@ in
 
       passthru = {
         inherit package deps;
+        workspaceDependencies = workspaceDependenciesTransitive;
       } // (attrs.passthru or {});
 
       # TODO: populate meta automatically
