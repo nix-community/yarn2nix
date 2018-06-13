@@ -163,8 +163,11 @@ in
         fi
 
         mkdir -p node_modules
-        ln -s $node_modules/* node_modules/
-        ln -s $node_modules/.bin node_modules/
+        # ln gets confused when the glob doesn't match anything
+        if [ "$(ls $node_modules | wc -l)" -gt 0 ]; then
+          ln -s $node_modules/* node_modules/
+          ln -s $node_modules/.bin node_modules/
+        fi
 
         rm package.json
         # Patched package.json with workspace dependencies added
