@@ -82,7 +82,7 @@ in rec {
         "rm ${lib.concatMapStringsSep
           " "
           (x: "node_modules/${x}")
-          ([pname] ++ (lib.mapAttrsToList (name: x: x.pname) workspaceDependencies))}}";
+          ([pname] ++ (lib.mapAttrsToList (name: x: x.pname) workspaceDependencies))}";
 in
     stdenv.mkDerivation {
       inherit name preBuild workspaceJSON;
