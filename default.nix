@@ -45,6 +45,7 @@ in rec {
 
   mkYarnModules = {
     name,
+    pname,
     packageJSON,
     yarnLock,
     yarnNix ? mkYarnNix yarnLock,
@@ -68,13 +69,26 @@ in rec {
         else
           ""
       ) (builtins.attrNames pkgConfig));
-      workspaceDependencyPaths = lib.mapAttrsToList (name: path: "${path}/node_modules/${name}") workspaceDependencies;
-      workspaceDependencyAdd = "yarn add ${lib.concatMapStringsSep " " (path: "file:${path}") workspaceDependencyPaths} ${lib.escapeShellArgs yarnFlags}";
+      workspaceJSON = builtins.toJSON {
+        private = true;
+        workspaces = [pname] ++ lib.mapAttrsToList (name: x: "deps/${x.pname}") workspaceDependencies;
+      };
+      workspaceDependencyLinks = lib.concatStringsSep "\n" (lib.mapAttrsToList (name: dep:
+        ''
+          mkdir -p deps/${dep.pname}
+          ln -s ${dep.packageJSON} deps/${dep.pname}/package.json
+        '') workspaceDependencies);
+      workspaceDependencyRemoves =
+        "rm ${lib.concatMapStringsSep
+          " "
+          (x: "node_modules/${x}")
+          ([pname] ++ (lib.mapAttrsToList (name: x: x.pname) workspaceDependencies))}}";
 in
     stdenv.mkDerivation {
-      inherit name preBuild;
+      inherit name preBuild workspaceJSON;
       phases = ["configurePhase" "buildPhase"];
       buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
+      passAsFile = [ "workspaceJSON" ];
 
       configurePhase = ''
         # Yarn writes cache directories etc to $HOME.
@@ -84,24 +98,27 @@ in
       buildPhase = ''
         runHook preBuild
 
-        cp ${packageJSON} ./package.json
+        mkdir ${pname}
+        cp ${packageJSON} ./${pname}/package.json
+        cp $workspaceJSONPath ./package.json
         cp ${yarnLock} ./yarn.lock
-        chmod +w ./yarn.lock ./package.json
+        chmod +w ./yarn.lock # ./package.json
 
         yarn config --offline set yarn-offline-mirror ${offlineCache}
 
         # Do not look up in the registry, but in the offline cache.
         # TODO: Ask upstream to fix this mess.
         sed -i -E 's|^(\s*resolved\s*")https?://.*/|\1|' yarn.lock
-        ${lib.optionalString (workspaceDependencyPaths != []) workspaceDependencyAdd}
+
+        ${workspaceDependencyLinks}
         yarn install ${lib.escapeShellArgs yarnFlags}
+        ${workspaceDependencyRemoves}
 
         ${lib.concatStringsSep "\n" postInstall}
 
         mkdir $out
         mv node_modules $out/
         patchShebangs $out
-        mv ./package.json $out/
       '';
     };
 
@@ -138,13 +155,17 @@ in
         name = "${pname}-modules-${version}";
         preBuild = yarnPreBuild;
         workspaceDependencies = workspaceDependenciesTransitive;
-        inherit packageJSON yarnLock yarnNix yarnFlags pkgConfig;
+        inherit packageJSON pname yarnLock yarnNix yarnFlags pkgConfig;
       };
       publishBinsFor_ = unlessNull publishBinsFor [pname];
       workspaceDependenciesTransitive = lib.foldl
         (a: b: a // b)
         {}
         (lib.mapAttrsToList (name: dep: dep.workspaceDependencies) workspaceDependencies ++ [workspaceDependencies]);
+      workspaceDependencyLinks =
+        lib.concatStringsSep
+          "\n"
+          (lib.mapAttrsToList (name: dep: "ln -s ${dep.src} node_modules/${dep.pname}") workspaceDependenciesTransitive);
     in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig" "workspaceDependencies"] // {
       inherit src;
 
@@ -174,9 +195,7 @@ in
           ln -s $node_modules/.bin node_modules/
         fi
 
-        rm package.json
-        # Patched package.json with workspace dependencies added
-        ln -s ${deps}/package.json .
+        ${workspaceDependencyLinks}
 
         if [ -d node_modules/${pname} ]; then
           echo "Error! There is already an ${pname} package in the top level node_modules dir!"
@@ -203,7 +222,7 @@ in
       '';
 
       passthru = {
-        inherit package deps;
+        inherit pname package packageJSON deps;
         workspaceDependencies = workspaceDependenciesTransitive;
       } // (attrs.passthru or {});
 
