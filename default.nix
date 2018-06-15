@@ -79,7 +79,7 @@ in rec {
           ln -s ${dep.packageJSON} deps/${dep.pname}/package.json
         '') workspaceDependencies);
       workspaceDependencyRemoves =
-        "rm ${lib.concatMapStringsSep
+        "rm -f ${lib.concatMapStringsSep
           " "
           (x: "node_modules/${x}")
           ([pname] ++ (lib.mapAttrsToList (name: x: x.pname) workspaceDependencies))}";
@@ -162,10 +162,10 @@ in
         (a: b: a // b)
         {}
         (lib.mapAttrsToList (name: dep: dep.workspaceDependencies) workspaceDependencies ++ [workspaceDependencies]);
-      workspaceDependencyLinks =
+      workspaceDependencyCopy =
         lib.concatStringsSep
           "\n"
-          (lib.mapAttrsToList (name: dep: "ln -s ${dep.src} node_modules/${dep.pname}") workspaceDependenciesTransitive);
+          (lib.mapAttrsToList (name: dep: "cp -r --no-preserve=all ${dep.src} node_modules/${dep.pname}") workspaceDependenciesTransitive);
     in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig" "workspaceDependencies"] // {
       inherit src;
 
@@ -195,7 +195,7 @@ in
           ln -s $node_modules/.bin node_modules/
         fi
 
-        ${workspaceDependencyLinks}
+        ${workspaceDependencyCopy}
 
         if [ -d node_modules/${pname} ]; then
           echo "Error! There is already an ${pname} package in the top level node_modules dir!"
