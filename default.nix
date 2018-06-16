@@ -69,10 +69,10 @@ in rec {
         else
           ""
       ) (builtins.attrNames pkgConfig));
-      workspaceJSON = builtins.toJSON {
+      workspaceJSON = pkgs.writeText "${pname}-${version}-workspace-package.json" (builtins.toJSON {
         private = true;
         workspaces = [pname] ++ lib.mapAttrsToList (name: x: "deps/${x.pname}") workspaceDependencies;
-      };
+      });
       workspaceDependencyLinks = lib.concatStringsSep "\n" (lib.mapAttrsToList (name: dep:
         ''
           mkdir -p deps/${dep.pname}
@@ -85,11 +85,10 @@ in rec {
           ([pname] ++ (lib.mapAttrsToList (name: x: x.pname) workspaceDependencies))}";
 in
     stdenv.mkDerivation {
-      inherit preBuild workspaceJSON;
+      inherit preBuild;
       name = "${pname}-modules-${version}";
       phases = ["configurePhase" "buildPhase"];
       buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
-      passAsFile = [ "workspaceJSON" ];
 
       configurePhase = ''
         # Yarn writes cache directories etc to $HOME.
@@ -101,7 +100,7 @@ in
 
         mkdir ${pname}
         cp ${packageJSON} ./${pname}/package.json
-        cp $workspaceJSONPath ./package.json
+        cp ${workspaceJSON} ./package.json
         cp ${yarnLock} ./yarn.lock
         chmod +w ./yarn.lock # ./package.json
 
