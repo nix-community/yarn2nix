@@ -102,7 +102,7 @@ in
         cp ${packageJSON} ./${pname}/package.json
         cp ${workspaceJSON} ./package.json
         cp ${yarnLock} ./yarn.lock
-        chmod +w ./yarn.lock # ./package.json
+        chmod +w ./yarn.lock
 
         yarn config --offline set yarn-offline-mirror ${offlineCache}
 
