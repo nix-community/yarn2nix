@@ -44,8 +44,8 @@ in rec {
   ];
 
   mkYarnModules = {
-    name,
     pname,
+    version,
     packageJSON,
     yarnLock,
     yarnNix ? mkYarnNix yarnLock,
@@ -85,7 +85,8 @@ in rec {
           ([pname] ++ (lib.mapAttrsToList (name: x: x.pname) workspaceDependencies))}";
 in
     stdenv.mkDerivation {
-      inherit name preBuild workspaceJSON;
+      inherit preBuild workspaceJSON;
+      name = "${pname}-modules-${version}";
       phases = ["configurePhase" "buildPhase"];
       buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
       passAsFile = [ "workspaceJSON" ];
@@ -152,10 +153,9 @@ in
       pname = reformatPackageName package.name;
       version = package.version;
       deps = mkYarnModules {
-        name = "${pname}-modules-${version}";
         preBuild = yarnPreBuild;
         workspaceDependencies = workspaceDependenciesTransitive;
-        inherit packageJSON pname yarnLock yarnNix yarnFlags pkgConfig;
+        inherit packageJSON pname version yarnLock yarnNix yarnFlags pkgConfig;
       };
       publishBinsFor_ = unlessNull publishBinsFor [pname];
       workspaceDependenciesTransitive = lib.foldl
