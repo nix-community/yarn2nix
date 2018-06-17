@@ -44,13 +44,15 @@ in rec {
   ];
 
   mkYarnModules = {
-    name,
+    pname,
+    version,
     packageJSON,
     yarnLock,
     yarnNix ? mkYarnNix yarnLock,
     yarnFlags ? defaultYarnFlags,
     pkgConfig ? {},
     preBuild ? "",
+    workspaceDependencies ? {},
   }:
     let
       offlineCache = importOfflineCache yarnNix;
@@ -67,9 +69,24 @@ in rec {
         else
           ""
       ) (builtins.attrNames pkgConfig));
-    in
+      workspaceJSON = pkgs.writeText "${pname}-${version}-workspace-package.json" (builtins.toJSON {
+        private = true;
+        workspaces = [pname] ++ lib.mapAttrsToList (name: x: "deps/${x.pname}") workspaceDependencies;
+      });
+      workspaceDependencyLinks = lib.concatStringsSep "\n" (lib.mapAttrsToList (name: dep:
+        ''
+          mkdir -p deps/${dep.pname}
+          ln -s ${dep.packageJSON} deps/${dep.pname}/package.json
+        '') workspaceDependencies);
+      workspaceDependencyRemoves =
+        "rm -f ${lib.concatMapStringsSep
+          " "
+          (x: "node_modules/${x}")
+          ([pname] ++ (lib.mapAttrsToList (name: x: x.pname) workspaceDependencies))}";
+in
     stdenv.mkDerivation {
-      inherit name preBuild;
+      inherit preBuild;
+      name = "${pname}-modules-${version}";
       phases = ["configurePhase" "buildPhase"];
       buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
 
@@ -81,7 +98,9 @@ in rec {
       buildPhase = ''
         runHook preBuild
 
-        cp ${packageJSON} ./package.json
+        mkdir ${pname}
+        cp ${packageJSON} ./${pname}/package.json
+        cp ${workspaceJSON} ./package.json
         cp ${yarnLock} ./yarn.lock
         chmod +w ./yarn.lock
 
@@ -90,7 +109,10 @@ in rec {
         # Do not look up in the registry, but in the offline cache.
         # TODO: Ask upstream to fix this mess.
         sed -i -E 's|^(\s*resolved\s*")https?://.*/|\1|' yarn.lock
+
+        ${workspaceDependencyLinks}
         yarn install ${lib.escapeShellArgs yarnFlags}
+        ${workspaceDependencyRemoves}
 
         ${lib.concatStringsSep "\n" postInstall}
 
@@ -122,6 +144,7 @@ in rec {
     pkgConfig ? {},
     extraBuildInputs ? [],
     publishBinsFor ? null,
+    workspaceDependencies ? {},
     ...
   }@attrs:
     let
@@ -129,12 +152,20 @@ in rec {
       pname = reformatPackageName package.name;
       version = package.version;
       deps = mkYarnModules {
-        name = "${pname}-modules-${version}";
         preBuild = yarnPreBuild;
-        inherit packageJSON yarnLock yarnNix yarnFlags pkgConfig;
+        workspaceDependencies = workspaceDependenciesTransitive;
+        inherit packageJSON pname version yarnLock yarnNix yarnFlags pkgConfig;
       };
       publishBinsFor_ = unlessNull publishBinsFor [pname];
-    in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig"] // {
+      workspaceDependenciesTransitive = lib.foldl
+        (a: b: a // b)
+        {}
+        (lib.mapAttrsToList (name: dep: dep.workspaceDependencies) workspaceDependencies ++ [workspaceDependencies]);
+      workspaceDependencyCopy =
+        lib.concatStringsSep
+          "\n"
+          (lib.mapAttrsToList (name: dep: "cp -r --no-preserve=all ${dep.src} node_modules/${dep.pname}") workspaceDependenciesTransitive);
+    in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig" "workspaceDependencies"] // {
       inherit src;
 
       name = unlessNull name "${pname}-${version}";
@@ -157,8 +188,13 @@ in rec {
         fi
 
         mkdir -p node_modules
-        ln -s $node_modules/* node_modules/
-        ln -s $node_modules/.bin node_modules/
+        # ln gets confused when the glob doesn't match anything
+        if [ "$(ls $node_modules | wc -l)" -gt 0 ]; then
+          ln -s $node_modules/* node_modules/
+          ln -s $node_modules/.bin node_modules/
+        fi
+
+        ${workspaceDependencyCopy}
 
         if [ -d node_modules/${pname} ]; then
           echo "Error! There is already an ${pname} package in the top level node_modules dir!"
@@ -185,7 +221,8 @@ in rec {
       '';
 
       passthru = {
-        inherit package deps;
+        inherit pname package packageJSON deps;
+        workspaceDependencies = workspaceDependenciesTransitive;
       } // (attrs.passthru or {});
 
       # TODO: populate meta automatically
