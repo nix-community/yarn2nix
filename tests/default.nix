@@ -8,15 +8,7 @@ let
   };
 in
 (listToAttrs (build ["wetty" "weave-front-end" "sendgrid-helpers"])) // {
-  workspace = rec {
-    package-one = yarn2nix.mkYarnPackage {
-      src = ./workspace/package-one;
-      yarnLock = ./workspace/yarn.lock;
-      workspaceDependencies = { inherit package-two; };
-    };
-    package-two = yarn2nix.mkYarnPackage {
-      src = ./workspace/package-two;
-      yarnLock = ./workspace/yarn.lock;
-    };
-  }.package-one;
+  workspace = (yarn2nix.mkYarnWorkspace {
+    src = ./workspace;
+  }).package-one;
 }
