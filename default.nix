@@ -133,6 +133,48 @@ in
     ln -s "$node_modules" node_modules
   '';
 
+  mkYarnWorkspace = {
+    src,
+    packageJSON ? src+"/package.json",
+    yarnLock ? src+"/yarn.lock",
+    packageOverrides ? {},
+    ...
+  }@attrs:
+  let
+    package = lib.importJSON packageJSON;
+    packageGlobs = package.workspaces;
+    globElemToRegex = lib.replaceStrings ["*"] [".*"];
+    # PathGlob -> [PathGlobElem]
+    splitGlob = lib.splitString "/";
+    # Path -> [PathGlobElem] -> [Path]
+    # Note: Only directories are included, everything else is filtered out
+    expandGlobList = base: globElems:
+    let
+      elemRegex = globElemToRegex (lib.head globElems);
+      rest = lib.tail globElems;
+      children = lib.attrNames (lib.filterAttrs (name: type: type == "directory") (builtins.readDir base));
+      matchingChildren = lib.filter (child: builtins.match elemRegex child != null) children;
+    in if globElems == []
+      then [ base ]
+      else lib.concatMap (child: expandGlobList (base+("/"+child)) rest) matchingChildren;
+    # Path -> PathGlob -> [Path]
+    expandGlob = base: glob: expandGlobList base (splitGlob glob);
+    packagePaths = lib.concatMap (expandGlob src) packageGlobs;
+    packages = lib.listToAttrs (map (src:
+    let
+      packageJSON = src+"/package.json";
+      package = lib.importJSON packageJSON;
+      allDependencies = lib.foldl (a: b: a // b) {} (map (field: lib.attrByPath [field] {} package) ["dependencies" "devDependencies"]);
+    in rec {
+      name = reformatPackageName package.name;
+      value = mkYarnPackage (builtins.removeAttrs attrs ["packageOverrides"] // {
+        inherit src packageJSON yarnLock;
+        workspaceDependencies = lib.mapAttrs (name: version: packages.${name})
+          (lib.filterAttrs (name: version: packages ? ${name}) allDependencies);
+      } // lib.attrByPath [name] {} packageOverrides);
+    }) packagePaths);
+  in packages;
+
   mkYarnPackage = {
     name ? null,
     src,
