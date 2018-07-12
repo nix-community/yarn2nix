@@ -15,9 +15,10 @@ const derivation_bin_path = output + "/bin";
 function processPackage(name) {
   console.log("Processing ", name);
   const package_path = output + "/node_modules/" + name;
+  const package_path_relative = "../node_modules/" + name;
   const package_json_path = package_path + "/package.json";
   const package_json = JSON.parse(fs.readFileSync(package_json_path));
-  
+
   if (!package_json.bin) {
     console.log("No binaries provided");
     return;
@@ -34,8 +35,8 @@ function processPackage(name) {
 
   for (let binName in package_json.bin) {
     const bin_path = package_json.bin[binName];
-    const full_bin_path = path.normalize(package_path + "/" + bin_path);
-    fs.symlinkSync(full_bin_path, derivation_bin_path + "/"+ binName);
+    const full_bin_path = path.normalize(package_path_relative + "/" + bin_path);
+    fs.symlinkSync(full_bin_path, derivation_bin_path + "/" + binName);
     console.log("Linked", binName);
   }
 }
