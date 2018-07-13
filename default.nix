@@ -247,6 +247,8 @@ in
         # ln gets confused when the glob doesn't match anything
         if [ "$(ls $node_modules | wc -l)" -gt 0 ]; then
           ln -s $node_modules/* node_modules/
+        fi
+        if [ -d $node_modules/.bin ]; then
           ln -s $node_modules/.bin node_modules/
         fi
 
@@ -266,7 +268,8 @@ in
         runHook preInstall
 
         mkdir -p $out
-        cp -r node_modules $out/node_modules
+        cp -rL node_modules $out/node_modules
+        chmod -R +w $out/node_modules
         mkdir -p $out/node_modules/${pname}
         cp -r . $out/node_modules/${pname}
         rm -rf $out/node_modules/${pname}/node_modules
