@@ -216,7 +216,10 @@ in
         lib.concatStringsSep
           "\n"
           (builtins.map
-            (dep: "cp -r --no-preserve=all ${dep.src} node_modules/${dep.pname}")
+            (dep: ''
+              mkdir -p node_modules/${dep.pname}
+              cp -r --no-preserve=all ${dep.src} node_modules/${dep.pname}
+            '')
             workspaceDependenciesTransitive);
     in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig" "workspaceDependencies"] // {
       inherit src;
@@ -264,6 +267,7 @@ in
 
         mkdir -p $out
         cp -r node_modules $out/node_modules
+        mkdir -p $out/node_modules/${pname}
         cp -r . $out/node_modules/${pname}
         rm -rf $out/node_modules/${pname}/node_modules
 
