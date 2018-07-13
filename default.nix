@@ -207,7 +207,7 @@ in
         name = "${safeName}-modules-${version}";
         preBuild = yarnPreBuild;
         workspaceDependencies = workspaceDependenciesTransitive;
-        inherit packageJSON version yarnLock yarnNix yarnFlags pkgConfig;
+        inherit packageJSON pname version yarnLock yarnNix yarnFlags pkgConfig;
       };
       publishBinsFor_ = unlessNull publishBinsFor [pname];
       workspaceDependenciesTransitive = uniqueByPackageName
