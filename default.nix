@@ -243,14 +243,8 @@ in
           rm -rf node_modules
         fi
 
-        mkdir -p node_modules
-        # ln gets confused when the glob doesn't match anything
-        if [ "$(ls $node_modules | wc -l)" -gt 0 ]; then
-          ln -s $node_modules/* node_modules/
-        fi
-        if [ -d $node_modules/.bin ]; then
-          ln -s $node_modules/.bin node_modules/
-        fi
+        cp -r $node_modules node_modules
+        chmod -R +w node_modules
 
         ${workspaceDependencyCopy}
 
@@ -268,8 +262,7 @@ in
         runHook preInstall
 
         mkdir -p $out
-        cp -rL node_modules $out/node_modules
-        chmod -R +w $out/node_modules
+        mv node_modules $out/node_modules
         mkdir -p $out/node_modules/${pname}
         cp -r . $out/node_modules/${pname}
         rm -rf $out/node_modules/${pname}/node_modules
