@@ -23,15 +23,6 @@ in rec {
       non-null = builtins.filter (x: x != null) parts;
     in builtins.concatStringsSep "-" non-null;
 
-  uniqueByPackageName = list:
-    if list == [] then
-      []
-    else
-      let
-        x = lib.head list;
-        xs = uniqueByPackageName (lib.drop 1 list);
-      in [x] ++ lib.filter (e: x.package.name != e.package.name) xs;
-
   # Generates the yarn.nix from the yarn.lock file
   mkYarnNix = yarnLock:
     pkgs.runCommand "yarn.nix" {}
@@ -86,7 +77,7 @@ in rec {
       workspaceDependencyLinks = lib.concatStringsSep "\n" (builtins.map (dep:
         ''
           mkdir -p deps/${dep.pname}
-          ln -s ${dep.packageJSON} deps/${dep.pname}/package.json
+          ln -sf ${dep.packageJSON} deps/${dep.pname}/package.json
         '') workspaceDependencies);
       workspaceDependencyRemoves =
         "rm -f ${lib.concatMapStringsSep
@@ -203,6 +194,7 @@ in
       pname = package.name;
       safeName = reformatPackageName pname;
       version = package.version;
+      baseName = unlessNull name "${safeName}-${version}";
       deps = mkYarnModules {
         name = "${safeName}-modules-${version}";
         preBuild = yarnPreBuild;
@@ -210,21 +202,37 @@ in
         inherit packageJSON pname version yarnLock yarnNix yarnFlags pkgConfig;
       };
       publishBinsFor_ = unlessNull publishBinsFor [pname];
-      workspaceDependenciesTransitive = uniqueByPackageName
-        (lib.flatten (builtins.map (dep: dep.workspaceDependencies) workspaceDependencies)) ++ workspaceDependencies;
+      linkDirFunction = ''
+        linkDirToDirLinks() {
+          target=$1
+          if [ -L "$target" ]; then
+            local new=$(mktemp -d)
+            trueSource=$(realpath "$target")
+            echo $trueSource
+            if [ "$(ls $trueSource | wc -l)" -gt 0 ]; then
+              ln -s $trueSource/* $new/
+            fi
+            rm -r "$target"
+            mv "$new" "$target"
+          fi
+        }
+      '';
+      workspaceDependenciesTransitive = (lib.flatten (builtins.map (dep: dep.workspaceDependencies) workspaceDependencies)) ++ workspaceDependencies;
       workspaceDependencyCopy =
         lib.concatStringsSep
           "\n"
           (builtins.map
             (dep: ''
+              # ensure any existing scope directory is not a symlink
+              linkDirToDirLinks "$(dirname node_modules/${dep.pname})"
               mkdir -p node_modules/${dep.pname}
-              cp -r --no-preserve=all ${dep.src} node_modules/${dep.pname}
+              tar -xf ${dep}/tarballs/${dep.name}.tgz --directory node_modules/${dep.pname} --strip-components=1
             '')
             workspaceDependenciesTransitive);
     in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig" "workspaceDependencies"] // {
       inherit src;
 
-      name = unlessNull name "${safeName}-${version}";
+      name = baseName;
 
       buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
 
@@ -246,6 +254,7 @@ in
         cp -r $node_modules node_modules
         chmod -R +w node_modules
 
+        ${linkDirFunction}
         ${workspaceDependencyCopy}
 
         if [ -d node_modules/${pname} ]; then
@@ -271,6 +280,12 @@ in
         node ${./nix/fixup_bin.js} $out ${lib.concatStringsSep " " publishBinsFor_}
 
         runHook postInstall
+      '';
+
+      doDist = true;
+      distPhase = ''
+        mkdir -p $out/tarballs/
+        yarn pack --ignore-scripts --filename $out/tarballs/${baseName}.tgz
       '';
 
       passthru = {
