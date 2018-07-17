@@ -23,6 +23,15 @@ in rec {
       non-null = builtins.filter (x: x != null) parts;
     in builtins.concatStringsSep "-" non-null;
 
+  uniqueByPackageName = list:
+    if list == [] then
+      []
+    else
+      let
+        x = lib.head list;
+        xs = uniqueByPackageName (lib.drop 1 list);
+      in [x] ++ lib.filter (e: x.package.name != e.package.name) xs;
+
   # Generates the yarn.nix from the yarn.lock file
   mkYarnNix = yarnLock:
     pkgs.runCommand "yarn.nix" {}
@@ -52,7 +61,7 @@ in rec {
     yarnFlags ? defaultYarnFlags,
     pkgConfig ? {},
     preBuild ? "",
-    workspaceDependencies ? {},
+    workspaceDependencies ? [],
   }:
     let
       offlineCache = importOfflineCache yarnNix;
@@ -71,9 +80,9 @@ in rec {
       ) (builtins.attrNames pkgConfig));
       workspaceJSON = pkgs.writeText "${pname}-${version}-workspace-package.json" (builtins.toJSON {
         private = true;
-        workspaces = [pname] ++ lib.mapAttrsToList (name: x: "deps/${x.pname}") workspaceDependencies;
+        workspaces = [pname] ++ builtins.map (x: "deps/${x.pname}") workspaceDependencies;
       });
-      workspaceDependencyLinks = lib.concatStringsSep "\n" (lib.mapAttrsToList (name: dep:
+      workspaceDependencyLinks = lib.concatStringsSep "\n" (builtins.map (dep:
         ''
           mkdir -p deps/${dep.pname}
           ln -s ${dep.packageJSON} deps/${dep.pname}/package.json
@@ -82,7 +91,7 @@ in rec {
         "rm -f ${lib.concatMapStringsSep
           " "
           (x: "node_modules/${x}")
-          ([pname] ++ (lib.mapAttrsToList (name: x: x.pname) workspaceDependencies))}";
+          ([pname] ++ (builtins.map (x: x.pname) workspaceDependencies))}";
 in
     stdenv.mkDerivation {
       inherit preBuild;
@@ -169,7 +178,7 @@ in
       name = reformatPackageName package.name;
       value = mkYarnPackage (builtins.removeAttrs attrs ["packageOverrides"] // {
         inherit src packageJSON yarnLock;
-        workspaceDependencies = lib.mapAttrs (name: version: packages.${name})
+        workspaceDependencies = lib.mapAttrsToList (name: version: packages.${name})
           (lib.filterAttrs (name: version: packages ? ${name}) allDependencies);
       } // lib.attrByPath [name] {} packageOverrides);
     }) packagePaths);
@@ -186,7 +195,7 @@ in
     pkgConfig ? {},
     extraBuildInputs ? [],
     publishBinsFor ? null,
-    workspaceDependencies ? {},
+    workspaceDependencies ? [],
     ...
   }@attrs:
     let
@@ -199,14 +208,14 @@ in
         inherit packageJSON pname version yarnLock yarnNix yarnFlags pkgConfig;
       };
       publishBinsFor_ = unlessNull publishBinsFor [pname];
-      workspaceDependenciesTransitive = lib.foldl
-        (a: b: a // b)
-        {}
-        (lib.mapAttrsToList (name: dep: dep.workspaceDependencies) workspaceDependencies ++ [workspaceDependencies]);
+      workspaceDependenciesTransitive = uniqueByPackageName
+        (lib.flatten (builtins.map (dep: dep.workspaceDependencies) workspaceDependencies)) ++ workspaceDependencies;
       workspaceDependencyCopy =
         lib.concatStringsSep
           "\n"
-          (lib.mapAttrsToList (name: dep: "cp -r --no-preserve=all ${dep.src} node_modules/${dep.pname}") workspaceDependenciesTransitive);
+          (builtins.map
+            (dep: "cp -r --no-preserve=all ${dep.src} node_modules/${dep.pname}")
+            workspaceDependenciesTransitive);
     in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig" "workspaceDependencies"] // {
       inherit src;
 
