@@ -53,6 +53,7 @@ in rec {
   ];
 
   mkYarnModules = {
+    name,
     pname,
     version,
     packageJSON,
@@ -78,7 +79,7 @@ in rec {
         else
           ""
       ) (builtins.attrNames pkgConfig));
-      workspaceJSON = pkgs.writeText "${pname}-${version}-workspace-package.json" (builtins.toJSON {
+      workspaceJSON = pkgs.writeText "${name}-workspace-package.json" (builtins.toJSON {
         private = true;
         workspaces = [pname] ++ builtins.map (x: "deps/${x.pname}") workspaceDependencies;
       });
@@ -94,8 +95,7 @@ in rec {
           ([pname] ++ (builtins.map (x: x.pname) workspaceDependencies))}";
 in
     stdenv.mkDerivation {
-      inherit preBuild;
-      name = "${pname}-modules-${version}";
+      inherit preBuild name;
       phases = ["configurePhase" "buildPhase"];
       buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
 
@@ -107,7 +107,7 @@ in
       buildPhase = ''
         runHook preBuild
 
-        mkdir ${pname}
+        mkdir -p ${pname}
         cp ${packageJSON} ./${pname}/package.json
         cp ${workspaceJSON} ./package.json
         cp ${yarnLock} ./yarn.lock
@@ -200,9 +200,11 @@ in
   }@attrs:
     let
       package = lib.importJSON packageJSON;
-      pname = reformatPackageName package.name;
+      pname = package.name;
+      safeName = reformatPackageName pname;
       version = package.version;
       deps = mkYarnModules {
+        name = "${safeName}-modules-${version}";
         preBuild = yarnPreBuild;
         workspaceDependencies = workspaceDependenciesTransitive;
         inherit packageJSON pname version yarnLock yarnNix yarnFlags pkgConfig;
@@ -214,12 +216,15 @@ in
         lib.concatStringsSep
           "\n"
           (builtins.map
-            (dep: "cp -r --no-preserve=all ${dep.src} node_modules/${dep.pname}")
+            (dep: ''
+              mkdir -p node_modules/${dep.pname}
+              cp -r --no-preserve=all ${dep.src} node_modules/${dep.pname}
+            '')
             workspaceDependenciesTransitive);
     in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig" "workspaceDependencies"] // {
       inherit src;
 
-      name = unlessNull name "${pname}-${version}";
+      name = unlessNull name "${safeName}-${version}";
 
       buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
 
@@ -238,12 +243,8 @@ in
           rm -rf node_modules
         fi
 
-        mkdir -p node_modules
-        # ln gets confused when the glob doesn't match anything
-        if [ "$(ls $node_modules | wc -l)" -gt 0 ]; then
-          ln -s $node_modules/* node_modules/
-          ln -s $node_modules/.bin node_modules/
-        fi
+        cp -r $node_modules node_modules
+        chmod -R +w node_modules
 
         ${workspaceDependencyCopy}
 
@@ -261,7 +262,8 @@ in
         runHook preInstall
 
         mkdir -p $out
-        cp -r node_modules $out/node_modules
+        mv node_modules $out/node_modules
+        mkdir -p $out/node_modules/${pname}
         cp -r . $out/node_modules/${pname}
         rm -rf $out/node_modules/${pname}/node_modules
 
