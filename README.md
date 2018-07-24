@@ -22,7 +22,7 @@ Converts `yarn.lock` files into nix expression.
 
 5. Create a `default.nix` to build your application (see the example below)
 
-## Example `default.nix`
+## Example: Building binaries `default.nix`
  
    For example, for the [`front-end`](https://github.com/microservices-demo/front-end) of weave's microservice reference application:
 
@@ -53,6 +53,26 @@ Converts `yarn.lock` files into nix expression.
 1. Run `nix-build` In the `front-end` directory. Copy the result path.
 2. Create an isolated environment `cd /tmp; nix-shell --pure -p bash`.
 3. `/nix/store/some-path-to-frontend/bin/weave-demo-frontend`
+
+## Example: Building static sites / SPAs
+
+If you're only interested in the `dist` folder after compilation, you need to adjust the `default.nix` from above and modify the `buildPhase` and `installPhase`:
+
+  ```
+    with (import <nixpkgs> {});
+    with (import /home/maarten/code/nixos/yarn2nix { inherit pkgs; });
+    rec {
+      weave-front-end = mkYarnPackage {
+        name = "weave-front-end";
+        src = ./.;
+        packageJson = ./package.json;
+        yarnLock = ./yarn.lock;
+        yarnNix = ./yarn.nix;
+        buildPhase = "yarn build";
+        installPhase = "mv dist $out";
+      };
+    }
+  ```
 
 ## License
 `yarn2nix` is released under the terms of the GPL-3.0 license.
