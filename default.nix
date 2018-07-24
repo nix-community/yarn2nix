@@ -86,7 +86,7 @@ in rec {
       workspaceDependencyLinks = lib.concatStringsSep "\n" (builtins.map (dep:
         ''
           mkdir -p deps/${dep.pname}
-          ln -s ${dep.packageJSON} deps/${dep.pname}/package.json
+          ln -sf ${dep.packageJSON} deps/${dep.pname}/package.json
         '') workspaceDependencies);
       workspaceDependencyRemoves =
         "rm -f ${lib.concatMapStringsSep
@@ -210,8 +210,16 @@ in
         inherit packageJSON pname version yarnLock yarnNix yarnFlags pkgConfig;
       };
       publishBinsFor_ = unlessNull publishBinsFor [pname];
-      workspaceDependenciesTransitive = uniqueByPackageName
-        (lib.flatten (builtins.map (dep: dep.workspaceDependencies) workspaceDependencies)) ++ workspaceDependencies;
+      recurseDependencies = all: some:
+        let
+          next = (lib.concatMap (d: d.workspaceDependencies) some);
+          names = [pname] ++ (builtins.map (d: d.pname) all);
+          new = builtins.filter
+            (x: !(builtins.elem x.pname names))
+            next;
+        in
+          if new == [] then all else recurseDependencies (all ++ new) new;
+      workspaceDependenciesTransitive = recurseDependencies workspaceDependencies workspaceDependencies;
       workspaceDependencyCopy =
         lib.concatStringsSep
           "\n"
@@ -274,8 +282,7 @@ in
       '';
 
       passthru = {
-        inherit pname package packageJSON deps;
-        workspaceDependencies = workspaceDependenciesTransitive;
+        inherit pname package packageJSON deps workspaceDependencies;
       } // (attrs.passthru or {});
 
       # TODO: populate meta automatically
