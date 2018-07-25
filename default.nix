@@ -225,8 +225,7 @@ in
             (dep: ''
               # ensure any existing scope directory is not a symlink
               linkDirToDirLinks "$(dirname node_modules/${dep.pname})"
-              mkdir -p node_modules/${dep.pname}
-              tar -xf ${dep}/tarballs/${dep.name}.tgz --directory node_modules/${dep.pname} --strip-components=1
+              cp -R ${dep.var} node_modules/${dep.pname}
             '')
             workspaceDependenciesTransitive);
     in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig" "workspaceDependencies"] // {
@@ -265,8 +264,6 @@ in
         runHook postConfigure
       '';
 
-      # Replace this phase on frontend packages where only the generated
-      # files are an interesting output.
       installPhase = attrs.installPhase or ''
         runHook preInstall
 
@@ -284,14 +281,19 @@ in
 
       doDist = true;
       distPhase = ''
-        mkdir -p $out/tarballs/
-        yarn pack --ignore-scripts --filename $out/tarballs/${baseName}.tgz
+        cp ${packageJSON} ./package.json
+        mkdir -p $tarball
+        yarn pack --ignore-scripts --filename $tarball/package.tgz
+        mkdir -p $var
+        tar -xf $tarball/package.tgz --directory $var --strip-components=1
       '';
 
       passthru = {
         inherit pname package packageJSON deps;
         workspaceDependencies = workspaceDependenciesTransitive;
       } // (attrs.passthru or {});
+
+      outputs = [ "out" "tarball" "var" ];
 
       # TODO: populate meta automatically
     });
