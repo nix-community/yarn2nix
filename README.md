@@ -54,5 +54,12 @@ Converts `yarn.lock` files into nix expression.
 2. Create an isolated environment `cd /tmp; nix-shell --pure -p bash`.
 3. `/nix/store/some-path-to-frontend/bin/weave-demo-frontend`
 
+## Front-end packages
+
+The default output of mkYarnPackage includes `bin` and `node_modules`
+directories, and is most useful for packages that provide binaries, such as
+command-line tools or servers.  For packages in which only the generated files
+are an interesting result, you can use the `var` output
+
 ## License
 `yarn2nix` is released under the terms of the GPL-3.0 license.
