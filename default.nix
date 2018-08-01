@@ -293,7 +293,11 @@ in
         workspaceDependencies = workspaceDependenciesTransitive;
       } // (attrs.passthru or {});
 
-      # TODO: populate meta automatically
+      meta = {
+        inherit (nodejs.meta) platforms;
+        description = packageJSON.description or "";
+        homepage = packageJSON.homepage or "";
+      } // (attrs.meta or {});
     });
 
   yarn2nix = mkYarnPackage {
