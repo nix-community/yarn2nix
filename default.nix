@@ -23,6 +23,17 @@ in rec {
       non-null = builtins.filter (x: x != null) parts;
     in builtins.concatStringsSep "-" non-null;
 
+  # https://docs.npmjs.com/files/package.json#license
+  # TODO: support expression syntax (OR, AND, etc)
+  spdxLicense = licstr:
+    if licstr == "UNLICENSED" then
+      lib.licenses.unfree
+    else
+      lib.findFirst
+        (l: l ? spdxId && l.spdxId == licstr)
+        { shortName = licstr; }
+        (builtins.attrValues lib.licenses);
+
   # Generates the yarn.nix from the yarn.lock file
   mkYarnNix = yarnLock:
     pkgs.runCommand "yarn.nix" {}
@@ -297,6 +308,8 @@ in
         inherit (nodejs.meta) platforms;
         description = packageJSON.description or "";
         homepage = packageJSON.homepage or "";
+        version = packageJSON.version or "";
+        license = if packageJSON ? license then spdxLicense packageJSON.license else "";
       } // (attrs.meta or {});
     });
 
