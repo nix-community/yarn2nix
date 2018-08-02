@@ -14,7 +14,7 @@ const derivation_bin_path = output + "/bin";
 
 function processPackage(name) {
   console.log("Processing ", name);
-  const package_path = output + "/node_modules/" + name;
+  const package_path = output + "/deps/" + name;
   const package_json_path = package_path + "/package.json";
   const package_json = JSON.parse(fs.readFileSync(package_json_path));
   

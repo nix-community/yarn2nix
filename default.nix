@@ -70,22 +70,16 @@ in rec {
         else
           ""
       ) (builtins.attrNames pkgConfig));
-      workspaceJSON = pkgs.writeText "${name}-workspace-package.json" (builtins.toJSON {
-        private = true;
-        workspaces = [pname] ++ builtins.map (x: "deps/${x.pname}") workspaceDependencies;
-      });
-      workspaceDependencyLinks = lib.concatStringsSep "\n" (builtins.map (dep:
-        ''
-          mkdir -p deps/${dep.pname}
-          ln -sf ${dep.packageJSON} deps/${dep.pname}/package.json
-        '') workspaceDependencies);
-      workspaceDependencyRemoves =
-        "rm -f ${lib.concatMapStringsSep
-          " "
-          (x: "node_modules/${x}")
-          ([pname] ++ (builtins.map (x: x.pname) workspaceDependencies))}";
-in
-    stdenv.mkDerivation {
+      workspaceJSON = pkgs.writeText
+        "${name}-workspace-package.json"
+        (builtins.toJSON { private = true; workspaces = ["deps/**"]; }); # scoped packages need second splat
+      workspaceDependencyLinks = lib.concatMapStringsSep "\n"
+        (dep: ''
+          mkdir -p "deps/${dep.pname}"
+          ln -sf ${dep.packageJSON} "deps/${dep.pname}/package.json"
+        '')
+        workspaceDependencies;
+    in stdenv.mkDerivation {
       inherit preBuild name;
       phases = ["configurePhase" "buildPhase"];
       buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
@@ -98,8 +92,8 @@ in
       buildPhase = ''
         runHook preBuild
 
-        mkdir -p ${pname}
-        cp ${packageJSON} ./${pname}/package.json
+        mkdir -p "deps/${pname}"
+        cp ${packageJSON} "deps/${pname}/package.json"
         cp ${workspaceJSON} ./package.json
         cp ${yarnLock} ./yarn.lock
         chmod +w ./yarn.lock
@@ -112,12 +106,12 @@ in
 
         ${workspaceDependencyLinks}
         yarn install ${lib.escapeShellArgs yarnFlags}
-        ${workspaceDependencyRemoves}
 
         ${lib.concatStringsSep "\n" postInstall}
 
         mkdir $out
         mv node_modules $out/
+        mv deps $out/
         patchShebangs $out
       '';
     };
@@ -205,10 +199,11 @@ in
       linkDirFunction = ''
         linkDirToDirLinks() {
           target=$1
-          if [ -L "$target" ]; then
+          if [ ! -f "$target" ]; then
+            mkdir -p "$target"
+          elif [ -L "$target" ]; then
             local new=$(mktemp -d)
             trueSource=$(realpath "$target")
-            echo $trueSource
             if [ "$(ls $trueSource | wc -l)" -gt 0 ]; then
               ln -s $trueSource/* $new/
             fi
@@ -218,17 +213,17 @@ in
         }
       '';
       workspaceDependenciesTransitive = (lib.flatten (builtins.map (dep: dep.workspaceDependencies) workspaceDependencies)) ++ workspaceDependencies;
-      workspaceDependencyCopy =
-        lib.concatStringsSep
-          "\n"
-          (builtins.map
-            (dep: ''
-              # ensure any existing scope directory is not a symlink
-              linkDirToDirLinks "$(dirname node_modules/${dep.pname})"
-              mkdir -p node_modules/${dep.pname}
-              tar -xf ${dep}/tarballs/${dep.name}.tgz --directory node_modules/${dep.pname} --strip-components=1
-            '')
-            workspaceDependenciesTransitive);
+      workspaceDependencyCopy = lib.concatMapStringsSep "\n"
+        (dep: ''
+          # ensure any existing scope directory is not a symlink
+          linkDirToDirLinks "$(dirname node_modules/${dep.pname})"
+          mkdir -p "deps/${dep.pname}"
+          tar -xf "${dep}/tarballs/${dep.name}.tgz" --directory "deps/${dep.pname}" --strip-components=1
+          if [ ! -e "deps/${dep.pname}/node_modules" ]; then
+            ln -s "${deps}/deps/${dep.pname}/node_modules" "deps/${dep.pname}/node_modules"
+          fi
+        '')
+        workspaceDependenciesTransitive;
     in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig" "workspaceDependencies"] // {
       inherit src;
 
@@ -241,27 +236,29 @@ in
       configurePhase = attrs.configurePhase or ''
         runHook preConfigure
 
-        if [ -d npm-packages-offline-cache ]; then
-          echo "npm-pacakges-offline-cache dir present. Removing."
-          rm -rf npm-packages-offline-cache
-        fi
+        for localDir in npm-packages-offline-cache node_modules; do
+          if [[ -d $localDir || -L $localDir ]]; then
+            echo "$localDir dir present. Removing."
+            rm -rf $localDir
+          fi
+        done
 
-        if [[ -d node_modules || -L node_modules ]]; then
-          echo "./node_modules is present. Removing."
-          rm -rf node_modules
-        fi
+        mkdir -p "deps/${pname}"
+        shopt -s extglob
+        cp -r !(deps) "deps/${pname}"
+        shopt -u extglob
+        ln -s ${deps}/deps/${pname}/node_modules "deps/${pname}/node_modules"
 
         cp -r $node_modules node_modules
         chmod -R +w node_modules
 
         ${linkDirFunction}
+        linkDirToDirLinks "$(dirname node_modules/${pname})"
+        ln -s "deps/${pname}" "node_modules/${pname}"
         ${workspaceDependencyCopy}
 
-        if [ -d node_modules/${pname} ]; then
-          echo "Error! There is already an ${pname} package in the top level node_modules dir!"
-          exit 1
-        fi
-
+        # Help yarn commands run in other phases find the package
+        echo "--cwd deps/${pname}" > .yarnrc
         runHook postConfigure
       '';
 
@@ -270,13 +267,9 @@ in
       installPhase = attrs.installPhase or ''
         runHook preInstall
 
-        mkdir -p $out
+        mkdir -p $out/bin
         mv node_modules $out/node_modules
-        mkdir -p $out/node_modules/${pname}
-        cp -r . $out/node_modules/${pname}
-        rm -rf $out/node_modules/${pname}/node_modules
-
-        mkdir $out/bin
+        mv deps $out/deps
         node ${./nix/fixup_bin.js} $out ${lib.concatStringsSep " " publishBinsFor_}
 
         runHook postInstall
@@ -284,6 +277,9 @@ in
 
       doDist = true;
       distPhase = ''
+        # pack command ignores cwd option
+        rm -f .yarnrc
+        cd $out/deps/${pname}
         mkdir -p $out/tarballs/
         yarn pack --ignore-scripts --filename $out/tarballs/${baseName}.tgz
       '';
