@@ -267,10 +267,10 @@ in rec {
       installPhase = attrs.installPhase or ''
         runHook preInstall
 
-        mkdir -p $out/bin
-        mv node_modules $out/node_modules
-        mv deps $out/deps
-        node ${./nix/fixup_bin.js} $out ${lib.concatStringsSep " " publishBinsFor_}
+        mkdir -p $out/{bin,libexec/${pname}}
+        mv node_modules $out/libexec/${pname}/node_modules
+        mv deps $out/libexec/${pname}/deps
+        node ${./nix/fixup_bin.js} $out/bin $out/libexec/${pname}/node_modules ${lib.concatStringsSep " " publishBinsFor_}
 
         runHook postInstall
       '';
@@ -279,7 +279,7 @@ in rec {
       distPhase = ''
         # pack command ignores cwd option
         rm -f .yarnrc
-        cd $out/deps/${pname}
+        cd $out/libexec/${pname}/deps/${pname}
         mkdir -p $out/tarballs/
         yarn pack --ignore-scripts --filename $out/tarballs/${baseName}.tgz
       '';

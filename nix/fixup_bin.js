@@ -2,19 +2,19 @@
 "use strict";
 
 /* Usage:
- * node fixup_bin.js <output_dir> [<bin_pkg_1>, <bin_pkg_2> ... ]
+ * node fixup_bin.js <bin_dir> <modules_dir> [<bin_pkg_1>, <bin_pkg_2> ... ]
  */
 
 const fs = require("fs");
 const path = require("path");
 
-const output = process.argv[2];
-const packages_to_publish_bin = process.argv.slice(3);
-const derivation_bin_path = output + "/bin";
+const derivation_bin_path = process.argv[2];
+const node_modules = process.argv[3];
+const packages_to_publish_bin = process.argv.slice(4);
 
 function processPackage(name) {
   console.log("Processing ", name);
-  const package_path = output + "/deps/" + name;
+  const package_path = node_modules + "/" + name;
   const package_json_path = package_path + "/package.json";
   const package_json = JSON.parse(fs.readFileSync(package_json_path));
   
