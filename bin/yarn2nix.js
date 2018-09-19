@@ -40,7 +40,7 @@ function generateNix(lockedDependencies) {
 
     let depRangeParts = depRange.split('@');
     let [url, sha1] = dep["resolved"].split("#");
-    let file_name = path.basename(url)
+    let file_name = url.replace("https://registry.yarnpkg.com/", "").replace(/[@/:-]/g, '_');
 
     if (found.hasOwnProperty(file_name)) {
       continue;
