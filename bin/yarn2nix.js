@@ -39,17 +39,25 @@ function generateNix(lockedDependencies) {
     let dep = lockedDependencies[depRange];
 
     let depRangeParts = depRange.split('@');
-    let [url, sha1] = dep["resolved"].split("#");
-    let file_name = path.basename(url)
 
-    if (found.hasOwnProperty(file_name)) {
-      continue;
-    } else {
-      found[file_name] = null;
+    if (depRange.includes("@file")) {
+      let path = depRange.split(':')[1]
+      let name = depRangeParts[1].replace("@", "_").replace("/","_")
+      console.log(`
+    {
+      name = "${name}";
+      path = "${path}";
+    }`);
+      if (found.hasOwnProperty(name)) {
+        continue;
+      } else {
+        found[name] = null;
+      }
     }
-
-
-    console.log(`
+    else {
+      let [url, sha1] = dep["resolved"].split("#");
+      let file_name = path.basename(url)
+      console.log(`
     {
       name = "${file_name}";
       path = fetchurl {
@@ -58,8 +66,14 @@ function generateNix(lockedDependencies) {
         sha1 = "${sha1}";
       };
     }`)
+      if (found.hasOwnProperty(file_name)) {
+        continue;
+      } else {
+        found[file_name] = null;
+      }
+    }
   }
-
+  
   console.log("  ];")
   console.log("}")
 }
