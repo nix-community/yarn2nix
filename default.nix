@@ -112,7 +112,8 @@ in rec {
         chmod +w ./yarn.lock
 
         yarn config --offline set yarn-offline-mirror ${offlineCache}
-       
+        yarn config --offline set yarn-offline-mirror-pruning false
+
         ${copyCommands}
 
         # Do not look up in the registry, but in the offline cache.
@@ -127,7 +128,6 @@ in rec {
         mkdir $out
         mv node_modules $out/
         mv deps $out/
-        patchShebangs $out
       '';
     };
 
