@@ -68,6 +68,8 @@ in rec {
   }:
     let
       offlineCache = importOfflineCache yarnNix;
+      locals = (import yarnNix { inherit fetchurl linkFarm; }).localPackages or [];
+      copyCommands = lib.concatMapStrings (l: "mkdir -p deps/faroi-js deps/faroi-js/\$(dirname ${l.name}).; cp -R ${l.path} deps/faroi-js/${l.name};") locals;
       extraBuildInputs = (lib.flatten (builtins.map (key:
         pkgConfig.${key} . buildInputs or []
       ) (builtins.attrNames pkgConfig)));
@@ -110,6 +112,8 @@ in rec {
         chmod +w ./yarn.lock
 
         yarn config --offline set yarn-offline-mirror ${offlineCache}
+       
+        ${copyCommands}
 
         # Do not look up in the registry, but in the offline cache.
         # TODO: Ask upstream to fix this mess.

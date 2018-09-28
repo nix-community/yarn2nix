@@ -25,9 +25,33 @@ Options:
 const HEAD = `
 {fetchurl, linkFarm}: rec {
   offline_cache = linkFarm "offline" packages;
-  packages = [
 `.trim();
 
+const remoteToString = function (remote) {
+  return `
+    {
+      name = "${remote.file_name}";
+      path = fetchurl {
+        name = "${remote.file_name}";
+        url  = "${remote.url}";
+        sha1 = "${remote.sha1}";
+      };
+    }`;
+}
+
+const localToString = function (local) {
+  return `
+    {
+      name = "${local.name}";
+      path = ${path.resolve(local.path)};
+    }`;
+}
+
+const arrayToString = function (elements) {
+  return `[
+    ${elements.join("\n")}
+  ]`;
+}
 ////////////////////////////////////////////////////////////////////////////////
 
 function generateNix(lockedDependencies) {
@@ -35,19 +59,19 @@ function generateNix(lockedDependencies) {
 
   console.log(HEAD)
 
+  let localPackages = [];
+  let remotePackages = [];
   for (var depRange in lockedDependencies) {
     let dep = lockedDependencies[depRange];
 
     let depRangeParts = depRange.split('@');
-
     if (depRange.includes("@file")) {
       let path = depRange.split(':')[1]
-      let name = depRangeParts[1].replace("@", "_").replace("/","_")
-      console.log(`
-    {
-      name = "${name}";
-      path = "${path}";
-    }`);
+      let name = path.split("/").slice(-1)[0]
+      localPackages.push({
+        name: name,
+        path: path
+      })
       if (found.hasOwnProperty(name)) {
         continue;
       } else {
@@ -57,24 +81,25 @@ function generateNix(lockedDependencies) {
     else {
       let [url, sha1] = dep["resolved"].split("#");
       let file_name = path.basename(url)
-      console.log(`
-    {
-      name = "${file_name}";
-      path = fetchurl {
-        name = "${file_name}";
-        url  = "${url}";
-        sha1 = "${sha1}";
-      };
-    }`)
       if (found.hasOwnProperty(file_name)) {
         continue;
       } else {
         found[file_name] = null;
       }
+      remotePackages.push({
+        file_name: file_name,
+        url: url,
+        sha1: sha1
+      })
+
     }
   }
-  
-  console.log("  ];")
+  let remotes = remotePackages.map(remoteToString)
+  let locals = localPackages.map(localToString)
+  console.log(`packages = ${arrayToString(remotes)};`)
+  console.log(`localPackages = ${arrayToString(locals)};`)
+
+  console.log(" ")
   console.log("}")
 }
 
