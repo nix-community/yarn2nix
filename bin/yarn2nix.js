@@ -20,6 +20,7 @@ Options:
   --no-nix         Hide the nix output
   --no-patch       Don't patch the lockfile if hashes are missing
   --lockfile=FILE  Specify path to the lockfile [default: ./yarn.lock].
+  --path TEXT      Absolute path of local dependencies
 `
 
 const HEAD = `
@@ -43,7 +44,7 @@ const localToString = function (local) {
   return `
     {
       name = "${local.name}";
-      path = ${path.resolve(local.path)};
+      path = "${local.path}";
     }`;
 }
 
@@ -54,7 +55,7 @@ const arrayToString = function (elements) {
 }
 ////////////////////////////////////////////////////////////////////////////////
 
-function generateNix(lockedDependencies) {
+function generateNix(lockedDependencies, local_deps_path) {
   let found = {};
 
   console.log(HEAD)
@@ -66,11 +67,11 @@ function generateNix(lockedDependencies) {
 
     let depRangeParts = depRange.split('@');
     if (depRange.includes("@file")) {
-      let path = depRange.split(':')[1]
-      let name = path.split("/").slice(-1)[0]
+      let local_path = depRange.split(':')[1]
+      let name = local_path.split("/").slice(-1)[0]
       localPackages.push({
         name: name,
-        path: path
+        path: local_deps_path ? local_deps_path + local_path.substring(1) : path.resolve(local_path) 
       })
       if (found.hasOwnProperty(name)) {
         continue;
@@ -160,7 +161,6 @@ let json = lockfile.parse(data)
 if (json.type != "success") {
   throw new Error("yarn.lock parse error")
 }
-
 // Check fore missing hashes in the yarn.lock and patch if necessary
 var pkgs = values(json.object);
 Promise.all(pkgs.map(updateResolvedSha1)).then(() => {
@@ -178,7 +178,8 @@ Promise.all(pkgs.map(updateResolvedSha1)).then(() => {
   }
 
   if (!options['--no-nix']) {
-    generateNix(json.object);
+    let local_deps_path = options["--path"]
+    generateNix(json.object, local_deps_path);
   }
 }).catch((error) => {
   console.error(error);
