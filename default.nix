@@ -287,7 +287,7 @@ in rec {
       '';
 
       doDist = true;
-      distPhase = ''
+      distPhase = attrs.distPhase or ''
         # pack command ignores cwd option
         rm -f .yarnrc
         cd $out/libexec/${pname}/deps/${pname}
