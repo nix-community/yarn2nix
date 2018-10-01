@@ -65,12 +65,13 @@ in rec {
     pkgConfig ? {},
     preBuild ? "",
     workspaceDependencies ? [],
+    extra ? []
   }:
     let
       offlineCache = importOfflineCache yarnNix;
       locals = (import yarnNix { inherit fetchurl linkFarm; }).localPackages or [];
       copyCommands = lib.concatMapStrings (l: "mkdir -p deps/faroi-js deps/faroi-js/\$(dirname ${l.name}).; cp -R ${l.path} deps/faroi-js/${l.name};") locals;
-      extraBuildInputs = (lib.flatten (builtins.map (key:
+      extraBuildInputs = extra ++ (lib.flatten (builtins.map (key:
         pkgConfig.${key} . buildInputs or []
       ) (builtins.attrNames pkgConfig)));
       postInstall = (builtins.map (key:
@@ -207,6 +208,7 @@ in rec {
       deps = mkYarnModules {
         name = "${safeName}-modules-${version}";
         preBuild = yarnPreBuild;
+        extra = extraBuildInputs;
         workspaceDependencies = workspaceDependenciesTransitive;
         inherit packageJSON pname version yarnLock yarnNix yarnFlags pkgConfig;
       };
