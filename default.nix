@@ -127,8 +127,8 @@ in rec {
         ${lib.concatStringsSep "\n" postInstall}
 
         mkdir $out
-        mv node_modules $out/
-        mv deps $out/
+        cp -r node_modules $out/
+        cp -r deps $out/
       '';
     };
 
