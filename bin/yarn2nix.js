@@ -39,6 +39,7 @@ function generateNix(lockedDependencies) {
     let dep = lockedDependencies[depRange];
 
     let depRangeParts = depRange.split('@');
+    if (!dep.resolved) continue;
     let [url, sha1] = dep["resolved"].split("#");
     let file_name = path.basename(url)
 
