@@ -19,4 +19,6 @@ in
       '';
     };
   }).package-one;
+} // {
+  duplicate-pkgs = import ./duplicate-pkgs { inherit yarn2nix; };
 }
