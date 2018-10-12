@@ -6,6 +6,7 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 const util = require("util");
+const execFile = util.promisify(require('child_process').execFile);
 
 const lockfile = require("@yarnpkg/lockfile")
 const docopt = require("docopt").docopt;
@@ -23,34 +24,45 @@ Options:
 `
 
 const HEAD = `
-{fetchurl, linkFarm}: rec {
+{fetchurl, linkFarm, fetchgit}: rec {
   offline_cache = linkFarm "offline" packages;
   packages = [
 `.trim();
 
 ////////////////////////////////////////////////////////////////////////////////
 
-function generateNix(lockedDependencies) {
-  let found = {};
+async function fetchgit(url, sha1, file_name) {
+ const {error, stdout, stderr} = await execFile("nix-prefetch-git", [url, sha1], {});
+ const sha256 = JSON.parse(stdout).sha256;
+ if (typeof error !== 'undefined' || typeof sha256 === 'undefined') {
+   console.error("Could not prefetch git dependency " + url + ", skipping. This will probably go wrong!");
+   console.error("error " + error + " sha256 " + sha256);
+ }
+ else {
+   return `
+   {
+     name = "${file_name}";
+     path = fetchgit {
+       name = "${file_name}";
+       url = "${url}";
+       rev = "${sha1}";
+       sha256 = "${sha256}";
+     };
+   }`
+ }
+}
 
-  console.log(HEAD)
+async function fetchLockedDep(depRange, dep) {
+  let depRangeParts = depRange.split('@');
+  if (!dep.resolved) return "";
+  let [url, sha1] = dep["resolved"].split("#");
+  let file_name = url.replace("https://registry.yarnpkg.com/", "").replace(/[@/:-]/g, '_');
 
-  for (var depRange in lockedDependencies) {
-    let dep = lockedDependencies[depRange];
-
-    let depRangeParts = depRange.split('@');
-    if (!dep.resolved) continue;
-    let [url, sha1] = dep["resolved"].split("#");
-    let file_name = url.replace("https://registry.yarnpkg.com/", "").replace(/[@/:-]/g, '_');
-
-    if (found.hasOwnProperty(file_name)) {
-      continue;
-    } else {
-      found[file_name] = null;
-    }
-
-
-    console.log(`
+  if (url.match(/^git:/)) {
+    return fetchgit(url, sha1, file_name);
+  }
+  else {
+    return `
     {
       name = "${file_name}";
       path = fetchurl {
@@ -58,11 +70,17 @@ function generateNix(lockedDependencies) {
         url  = "${url}";
         sha1 = "${sha1}";
       };
-    }`)
+    }`;
   }
+}
 
-  console.log("  ];")
-  console.log("}")
+function generateNix(lockedDependencies) {
+  Promise.all(Object.entries(lockedDependencies).map((entry) => fetchLockedDep(entry[0], entry[1]))).then((chunks) => {
+    console.log(HEAD);
+    (new Set(chunks)).forEach((v) => console.log(v));
+    console.log("  ];")
+    console.log("}")
+  });
 }
 
 
