@@ -3,11 +3,11 @@
   packages = [
 
     {
-      name = "_yarnpkg_lockfile___lockfile_1.0.0.tgz";
+      name = "_yarnpkg_lockfile___lockfile_1.1.0.tgz";
       path = fetchurl {
-        name = "_yarnpkg_lockfile___lockfile_1.0.0.tgz";
-        url  = "https://registry.yarnpkg.com/@yarnpkg/lockfile/-/lockfile-1.0.0.tgz";
-        sha1 = "33d1dbb659a23b81f87f048762b35a446172add3";
+        name = "_yarnpkg_lockfile___lockfile_1.1.0.tgz";
+        url  = "https://registry.yarnpkg.com/@yarnpkg/lockfile/-/lockfile-1.1.0.tgz";
+        sha1 = "e77a97fbd345b76d83245edcd17d393b1b41fb31";
       };
     }
 
