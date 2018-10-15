@@ -1,7 +1,8 @@
 language: nix
 env:
-  - NIXPKGS_CHANNEL=17.09
-  - NIXPKGS_CHANNEL=unstable
+  - NIXPKGS_CHANNEL=nixos-17.09
+  - NIXPKGS_CHANNEL=nixos-unstable
 
 # By building the tests, we also build yarn2nix itself.
-script: nix-build -I "nixpkgs=https://github.com/NixOS/nixpkgs-channels/archive/nixos-$NIXPKGS_CHANNEL.tar.gz" tests.nix
+script:
+  - nix-build -I "nixpkgs=channel:$NIXPKGS_CHANNEL" tests.nix
