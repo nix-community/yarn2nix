@@ -6,4 +6,4 @@ env:
 
 # By building the tests, we also build yarn2nix itself.
 script:
-  - nix-build -I "nixpkgs=channel:$NIXPKGS_CHANNEL" tests.nix
+  - ./run-tests.sh
