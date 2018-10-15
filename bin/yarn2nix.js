@@ -76,7 +76,8 @@ async function fetchLockedDep(depRange, dep) {
 }
 
 function generateNix(lockedDependencies) {
-  Promise.all(Object.entries(lockedDependencies).map((entry) => fetchLockedDep(entry[0], entry[1]))).then((chunks) => {
+  let depPromises = Object.entries(lockedDependencies).map(([range, dep]) => fetchLockedDep(range, dep));
+  Promise.all(depPromises).then((chunks) => {
     console.log(HEAD);
     (new Set(chunks)).forEach((v) => console.log(v));
     console.log("  ];")
