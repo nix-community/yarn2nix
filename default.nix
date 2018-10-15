@@ -4,7 +4,7 @@
 }:
 
 let
-  inherit (pkgs) stdenv lib fetchurl linkFarm;
+  inherit (pkgs) stdenv lib fetchurl linkFarm callPackage;
 in rec {
   # Export yarn again to make it easier to find out which yarn was used.
   inherit yarn;
@@ -46,7 +46,7 @@ in rec {
   # the package source.
   importOfflineCache = yarnNix:
     let
-      pkg = import yarnNix { inherit fetchurl linkFarm; };
+      pkg = callPackage yarnNix { };
     in
       pkg.offline_cache;
 
