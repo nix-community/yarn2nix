@@ -31,37 +31,37 @@ const HEAD = `
 
 ////////////////////////////////////////////////////////////////////////////////
 
-async function fetchgit(url, sha1, file_name) {
- const {error, stdout, stderr} = await execFile("nix-prefetch-git", [url, sha1], {});
- const sha256 = JSON.parse(stdout).sha256;
- if (typeof error !== 'undefined' || typeof sha256 === 'undefined') {
-   console.error("Could not prefetch git dependency " + url + ", skipping. This will probably go wrong!");
-   console.error("error " + error + " sha256 " + sha256);
- }
- else {
-   return `
-   {
-     name = "${file_name}";
-     path = fetchgit {
-       name = "${file_name}";
-       url = "${url}";
-       rev = "${sha1}";
-       sha256 = "${sha256}";
-     };
-   }`
- }
+async function fetchgit(url, sha1) {
+  let file_name = path.basename(url);
+  const {error, stdout, stderr} = await execFile("nix-prefetch-git", [url, sha1], {});
+  const sha256 = JSON.parse(stdout).sha256;
+  if (typeof error !== 'undefined' || typeof sha256 === 'undefined') {
+    console.error("Could not prefetch git dependency " + url + ", skipping. This will probably go wrong!");
+    console.error("error " + error + " sha256 " + sha256);
+  }
+  else {
+    return `
+    {
+      name = "${file_name}";
+      path = fetchgit {
+        name = "${file_name}";
+        url = "${url}";
+        rev = "${sha1}";
+        sha256 = "${sha256}";
+      };
+    }`
+  }
 }
 
 async function fetchLockedDep(depRange, dep) {
   let depRangeParts = depRange.split('@');
   if (!dep.resolved) return "";
   let [url, sha1] = dep["resolved"].split("#");
-  let file_name = url.replace("https://registry.yarnpkg.com/", "").replace(/[@/:-]/g, '_');
-
   if (url.match(/^git:/)) {
-    return fetchgit(url, sha1, file_name);
+    return fetchgit(url, sha1);
   }
   else {
+    let file_name = url.replace("https://registry.yarnpkg.com/", "").replace(/[@/:-]/g, '_');
     return `
     {
       name = "${file_name}";
