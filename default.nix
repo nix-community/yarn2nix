@@ -1,6 +1,7 @@
-{ pkgs ? import <nixpkgs> {}
+{ pkgs ? import <nixpkgs> { inherit system; }
 , nodejs ? pkgs.nodejs
 , yarn ? pkgs.yarn
+, system ? builtins.currentSystem
 }:
 
 let
