@@ -12,6 +12,15 @@
     }
 
     {
+      name = "deep_equal___deep_equal_1.0.1.tgz";
+      path = fetchurl {
+        name = "deep_equal___deep_equal_1.0.1.tgz";
+        url  = "https://registry.yarnpkg.com/deep-equal/-/deep-equal-1.0.1.tgz";
+        sha1 = "f5d260292b660e084eff4cdbc9f08ad3247448b5";
+      };
+    }
+
+    {
       name = "docopt___docopt_0.6.2.tgz";
       path = fetchurl {
         name = "docopt___docopt_0.6.2.tgz";

@@ -9,6 +9,7 @@ const util = require("util");
 
 const lockfile = require("@yarnpkg/lockfile")
 const docopt = require("docopt").docopt;
+const equal = require("deep-equal");
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -126,9 +127,9 @@ if (json.type != "success") {
 // Check fore missing hashes in the yarn.lock and patch if necessary
 var pkgs = values(json.object);
 Promise.all(pkgs.map(updateResolvedSha1)).then(() => {
-  let newData = lockfile.stringify(json.object);
+  let origJson = lockfile.parse(data)
 
-  if (newData != data) {
+  if (!equal(origJson, json)) {
     console.error("found changes in the lockfile", options["--lockfile"]);
 
     if (options["--no-patch"]) {
