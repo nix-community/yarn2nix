@@ -22,6 +22,10 @@ Converts `yarn.lock` files into nix expression.
 
 5. Create a `default.nix` to build your application (see the example below)
 
+## Requirements
+
+Make sure to generate the lock file with yarn >= 1.10.1
+
 ## Example `default.nix`
  
    For example, for the [`front-end`](https://github.com/microservices-demo/front-end) of weave's microservice reference application:
