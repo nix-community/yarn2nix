@@ -4,7 +4,7 @@
 }:
 
 let
-  inherit (pkgs) stdenv lib fetchurl linkFarm callPackage;
+  inherit (pkgs) stdenv lib fetchurl linkFarm callPackage git;
 in rec {
   # Export yarn again to make it easier to find out which yarn was used.
   inherit yarn;
@@ -96,7 +96,7 @@ in rec {
     in stdenv.mkDerivation {
       inherit preBuild name;
       phases = ["configurePhase" "buildPhase"];
-      buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
+      buildInputs = [ yarn nodejs git ] ++ extraBuildInputs;
 
       configurePhase = ''
         # Yarn writes cache directories etc to $HOME.
@@ -116,7 +116,7 @@ in rec {
 
         # Do not look up in the registry, but in the offline cache.
         # TODO: Ask upstream to fix this mess.
-        sed -i -E '/resolved /{s|https://registry.yarnpkg.com/||;s|[@/:-]|_|g}' yarn.lock
+        sed -i -E '/resolved \"https:/{s|https://registry.yarnpkg.com/||; s|/|_|g; s|git:__|${offlineCache}/|; s|[@:-]|_|g}' yarn.lock
 
         ${workspaceDependencyLinks}
         yarn install ${lib.escapeShellArgs yarnFlags}
