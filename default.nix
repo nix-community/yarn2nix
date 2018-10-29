@@ -292,7 +292,7 @@ in rec {
         rm -f .yarnrc
         cd $out/libexec/${pname}/deps/${pname}
         mkdir -p $out/tarballs/
-        yarn pack --ignore-scripts --filename $out/tarballs/${baseName}.tgz
+        yarn pack --offline --ignore-scripts --filename $out/tarballs/${baseName}.tgz
       '';
 
       passthru = {
