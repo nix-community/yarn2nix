@@ -24,7 +24,7 @@ Options:
 `
 
 const HEAD = `
-{fetchurl, linkFarm, fetchgit}: rec {
+{fetchurl, linkFarm, fetchgit, runCommandNoCC, gnutar}: rec {
   offline_cache = linkFarm "offline" packages;
   packages = [
 `.trim();
@@ -43,12 +43,17 @@ async function fetchgit(url, sha1) {
     return `
     {
       name = "${file_name}";
-      path = fetchgit {
-        name = "${file_name}";
-        url = "${url}";
-        rev = "${sha1}";
-        sha256 = "${sha256}";
-      };
+      path = let repo = fetchgit {
+          name = "${file_name}";
+          url = "${url}";
+          rev = "${sha1}";
+          sha256 = "${sha256}";
+        };
+      in runCommandNoCC "${file_name}" {buildInputs = [gnutar];} ''
+        # Set u+w because tar-fs can't unpack archives with read-only dirs
+        # https://github.com/mafintosh/tar-fs/issues/79
+        tar cf $out --mode u+w -C \${repo} .
+      '';
     }`
   }
 }
