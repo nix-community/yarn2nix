@@ -9,6 +9,9 @@ in rec {
   # Export yarn again to make it easier to find out which yarn was used.
   inherit yarn;
 
+  # Re-export pkgs
+  inherit pkgs;
+
   unlessNull = item: alt:
     if item == null then alt else item;
 
