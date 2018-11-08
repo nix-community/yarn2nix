@@ -33,7 +33,8 @@ const HEAD = `
 
 async function fetchgit(url, sha1) {
   let file_name = path.basename(url);
-  const {error, stdout, stderr} = await execFile("nix-prefetch-git", [url, sha1], {});
+  let url_for_git = url.replace(/^git\+/, "")
+  const {error, stdout, stderr} = await execFile("nix-prefetch-git", [url_for_git, sha1], {});
   const sha256 = JSON.parse(stdout).sha256;
   if (typeof error !== 'undefined' || typeof sha256 === 'undefined') {
     console.error("Could not prefetch git dependency " + url + ", skipping. This will probably go wrong!");
@@ -45,7 +46,7 @@ async function fetchgit(url, sha1) {
       name = "${file_name}";
       path = let repo = fetchgit {
           name = "${file_name}";
-          url = "${url}";
+          url = "${url_for_git}";
           rev = "${sha1}";
           sha256 = "${sha256}";
         };
@@ -62,7 +63,7 @@ async function fetchLockedDep(depRange, dep) {
   let depRangeParts = depRange.split('@');
   if (!dep.resolved) return "";
   let [url, sha1] = dep["resolved"].split("#");
-  if (url.match(/^git:/)) {
+  if (url.match(/^git(\+[a-z0-9+.-]*)?:/)) {
     return fetchgit(url, sha1);
   }
   else {
