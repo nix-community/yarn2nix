@@ -55,12 +55,19 @@ const arrayToString = function (elements) {
 }
 ////////////////////////////////////////////////////////////////////////////////
 
-function generateNix(lockedDependencies, local_deps_path) {
+function generateNix(lockedDependencies, local_deps_path, workspaces) {
   let found = {};
 
   console.log(HEAD)
 
   let localPackages = [];
+  for (let i in workspaces) {
+    localPackages.push({
+        name: workspaces[i],
+        path: local_deps_path ? local_deps_path + '/' + workspaces[i] : path.resolve('./' + workspaces[i]) 
+    })
+  };
+  
   let remotePackages = [];
   for (var depRange in lockedDependencies) {
     let dep = lockedDependencies[depRange];
@@ -157,6 +164,10 @@ function values(obj) {
 var options = docopt(USAGE);
 
 let data = fs.readFileSync(options['--lockfile'], 'utf8')
+let package_json_path = options['--path'] + '/package.json'
+let package_json = require(package_json_path)
+let workspaces = package_json.workspaces
+
 let json = lockfile.parse(data)
 if (json.type != "success") {
   throw new Error("yarn.lock parse error")
@@ -179,7 +190,7 @@ Promise.all(pkgs.map(updateResolvedSha1)).then(() => {
 
   if (!options['--no-nix']) {
     let local_deps_path = options["--path"]
-    generateNix(json.object, local_deps_path);
+    generateNix(json.object, local_deps_path, workspaces);
   }
 }).catch((error) => {
   console.error(error);
