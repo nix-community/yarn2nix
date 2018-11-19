@@ -177,16 +177,6 @@ var pkgs = values(json.object);
 Promise.all(pkgs.map(updateResolvedSha1)).then(() => {
   let newData = lockfile.stringify(json.object);
 
-  if (newData != data) {
-    console.error("found changes in the lockfile", options["--lockfile"]);
-
-    if (options["--no-patch"]) {
-      console.error("...aborting");
-      process.exit(1);
-    }
-
-    fs.writeFileSync(options['--lockfile'], newData);
-  }
 
   if (!options['--no-nix']) {
     let local_deps_path = options["--path"]
