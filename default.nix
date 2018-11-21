@@ -71,7 +71,7 @@ in rec {
     let
       offlineCache = importOfflineCache yarnNix;
       locals = (import yarnNix { inherit fetchurl linkFarm; }).localPackages or [];
-      copyCommands = lib.concatMapStrings (l: "mkdir -m 777 -p deps/faroi-js deps/faroi-js/\$(dirname ${l.name}).; cp -R ${l.path} deps/faroi-js/${l.name};") locals;
+      copyCommands = lib.concatMapStrings (l: "mkdir -m 777 -p deps/faroi-js deps/faroi-js/\$(dirname ${l.name}).; cp -R --no-preserve=mode ${l.path} deps/faroi-js/${l.name};") locals;
       extraBuildInputs = extra ++ (lib.flatten (builtins.map (key:
         pkgConfig.${key} . buildInputs or []
       ) (builtins.attrNames pkgConfig)));
