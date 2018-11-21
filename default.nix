@@ -121,6 +121,7 @@ in rec {
         # Do not look up in the registry, but in the offline cache.
         # TODO: Ask upstream to fix this mess.
         sed -i -E 's|^(\s*resolved\s*")https?://.*/|\1|' yarn.lock
+        chmod +rw ./deps/faroi-js -R
 
         ${workspaceDependencyLinks}
         yarn install ${lib.escapeShellArgs yarnFlags}
