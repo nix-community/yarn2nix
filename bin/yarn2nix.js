@@ -137,7 +137,7 @@ Promise.all(pkgs.map(updateResolvedSha1)).then(() => {
       process.exit(1);
     }
 
-    fs.writeFileSync(options['--lockfile'], newData);
+    fs.writeFileSync(options['--lockfile'], lockfile.stringify(json.object));
   }
 
   if (!options['--no-nix']) {
