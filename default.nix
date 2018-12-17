@@ -226,7 +226,7 @@ in rec {
           fi
         }
       '';
-      workspaceDependenciesTransitive = (lib.flatten (builtins.map (dep: dep.workspaceDependencies) workspaceDependencies)) ++ workspaceDependencies;
+      workspaceDependenciesTransitive = lib.unique ((lib.flatten (builtins.map (dep: dep.workspaceDependencies) workspaceDependencies)) ++ workspaceDependencies);
       workspaceDependencyCopy = lib.concatMapStringsSep "\n"
         (dep: ''
           # ensure any existing scope directory is not a symlink
