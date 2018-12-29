@@ -21,6 +21,14 @@ in
       '';
     };
   }).package-one;
+  inherit (yarn2nix.mkYarnWorkspace {
+    src = fetchFromGitHub {
+      owner = "facebook";
+      repo = "nuclide";
+      rev = "v0.366.0";
+      sha256 = "1iyy8by8p90dncyqi3pgaj36hmz1khi9w1rkhd5gi9nbkkv5can4";
+    };
+  }) nuclide-node-transpiler;
 } // {
   duplicate-pkgs = import ./duplicate-pkgs { inherit yarn2nix; };
   no-import-from-derivation = import ./no-import-from-derivation {
