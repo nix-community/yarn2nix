@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 "use strict";
 
 /* Usage:
@@ -17,7 +18,7 @@ function processPackage(name) {
   const package_path = node_modules + "/" + name;
   const package_json_path = package_path + "/package.json";
   const package_json = JSON.parse(fs.readFileSync(package_json_path));
-  
+
   if (!package_json.bin) {
     console.log("No binaries provided");
     return;

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 set -euo pipefail
 
 : "${NIXPKGS_CHANNEL:=nixpkgs-unstable}"
