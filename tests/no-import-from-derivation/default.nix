@@ -1,4 +1,5 @@
 { mkYarnPackage, fetchFromGitHub }:
+
 mkYarnPackage rec {
   src = fetchFromGitHub {
     owner = "stevemao";
@@ -9,4 +10,13 @@ mkYarnPackage rec {
   packageJSON = ./package.json;
   yarnLock = ./yarn.lock;
   yarnNix = ./yarn.nix;
+  buildPhase = ''
+    test -f ./node_modules/.yarn-integrity
+
+    # test bin
+    test -f ./node_modules/.bin/acorn
+
+    # devDependencies
+    test -f ./node_modules/benchmark/package.json
+  '';
 }

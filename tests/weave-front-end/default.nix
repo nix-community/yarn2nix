@@ -6,7 +6,9 @@ yarn2nix.mkYarnPackage {
     test -f ./node_modules/.yarn-integrity
 
     # dependencies
-    test -f ./node_modules/@types/minimist/package.json
-    test -f ./node_modules/minimist/package.json
+    test -f ./node_modules/async/package.json
+
+    # devDependencies
+    test -f ./node_modules/chai/package.json
   '';
 }
