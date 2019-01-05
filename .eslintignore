@@ -1,0 +1,8 @@
+node_modules
+__generated__
+.next
+npm-debug.log
+package-lock.json
+package-lock.json
+package.json
+.DS_Store

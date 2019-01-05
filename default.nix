@@ -317,5 +317,26 @@ in rec {
     # yarn2nix is the only package that requires the yarnNix option.
     # All the other projects can auto-generate that file.
     yarnNix = ./yarn.nix;
+
+    yarnFlags = defaultYarnFlags ++ ["--production=true"];
+
+    buildPhase = ''
+      testFilePresent () {
+        [ -e $1 ] && echo "Found $1" || (echo "Error - not found file $1" && exit 1)
+      }
+
+      testFileAbsent () {
+        [ ! -e $1 ] && echo "Not found $1" || (echo "Error - found file $1" && exit 1)
+      }
+
+      testFilePresent ./node_modules/.yarn-integrity
+
+      # check dependencies are installed
+      testFilePresent ./node_modules/@yarnpkg/lockfile/package.json
+
+      # check devDependencies are not installed
+      testFileAbsent ./node_modules/.bin/eslint
+      testFileAbsent ./node_modules/eslint/package.json
+    '';
   };
 }

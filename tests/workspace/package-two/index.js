@@ -1,5 +1,5 @@
-const upperCase = require("upper-case");
+const upperCase = require('upper-case')
 
 module.exports = function() {
-  return upperCase("Hello from package-two!");
+  return upperCase('Hello from package-two!')
 }

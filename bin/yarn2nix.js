@@ -1,19 +1,17 @@
 #!/usr/bin/env node
 
-"use strict";
+const crypto = require('crypto')
+const fs = require('fs')
+const https = require('https')
+const path = require('path')
+const util = require('util')
+const execFile = util.promisify(require('child_process').execFile)
 
-const crypto = require('crypto');
-const fs = require("fs");
-const https = require("https");
-const path = require("path");
-const util = require("util");
-const execFile = util.promisify(require('child_process').execFile);
+const lockfile = require('@yarnpkg/lockfile')
+const docopt = require('docopt').docopt
+const equal = require('deep-equal')
 
-const lockfile = require("@yarnpkg/lockfile")
-const docopt = require("docopt").docopt;
-const equal = require("deep-equal");
-
-////////////////////////////////////////////////////////////////////////////////
+/// /////////////////////////////////////////////////////////////////////////////
 
 const USAGE = `
 Usage: yarn2nix [options]
@@ -29,9 +27,9 @@ const HEAD = `
 { fetchurl, linkFarm, runCommandNoCC, gnutar }: rec {
   offline_cache = linkFarm "offline" packages;
   packages = [
-`.trim();
+`.trim()
 
-////////////////////////////////////////////////////////////////////////////////
+/// /////////////////////////////////////////////////////////////////////////////
 
 // fetchgit transforms
 //
@@ -91,19 +89,18 @@ function urlToName(url) {
   // TODO: before - , now - .replace(/\W/g, '_'), this breaks old generated yarn.nix files, is it fine?
   if (url.startsWith('git+')) {
     return path.basename(url)
-  } else {
-    return url
-      .replace("https://registry.yarnpkg.com/", "") // prevents having long directory names
-      .replace(/[@/:-]/g, '_'); // replace @ and : and - characted with underscore
   }
+  return url
+    .replace('https://registry.yarnpkg.com/', '') // prevents having long directory names
+    .replace(/[@/:-]/g, '_') // replace @ and : and - characted with underscore
 }
 
 async function fetchLockedDep(depRange, dep) {
-  const depRangeParts = depRange.split('@');
+  const depRangeParts = depRange.split('@')
 
-  if (!dep.resolved) return "";
+  if (!dep.resolved) return ''
 
-  const [url, sha1_or_rev] = dep["resolved"].split("#");
+  const [url, sha1_or_rev] = dep.resolved.split('#')
 
   const file_name = urlToName(url)
 
@@ -112,116 +109,126 @@ async function fetchLockedDep(depRange, dep) {
 
     const [_, branch] = depRange.split('#')
 
-    const url_for_git = url.replace(/^git\+/, "")
+    const url_for_git = url.replace(/^git\+/, '')
 
-    return fetchgit(file_name, url_for_git, rev, branch || "master");
+    return fetchgit(file_name, url_for_git, rev, branch || 'master')
   }
-  else {
-    const sha = sha1_or_rev
+  const sha = sha1_or_rev
 
-    return `    {
+  return `    {
       name = "${file_name}";
       path = fetchurl {
         name = "${file_name}";
         url  = "${url}";
         sha1 = "${sha}";
       };
-    }`;
-  }
+    }`
 }
 
 function generateNix(lockedDependencies) {
-  const depPromises = Object.entries(lockedDependencies).map(([range, dep]) => fetchLockedDep(range, dep));
+  const depPromises = Object.entries(lockedDependencies).map(([range, dep]) =>
+    fetchLockedDep(range, dep),
+  )
 
-  Promise.all(depPromises).then((chunks) => {
-    console.log(HEAD);
-    (new Set(chunks)).forEach((v) => console.log(v));
-    console.log("  ];")
-    console.log("}")
-  });
+  Promise.all(depPromises).then(chunks => {
+    console.log(HEAD)
+    new Set(chunks).forEach(v => console.log(v))
+    console.log('  ];')
+    console.log('}')
+  })
 }
-
 
 function getSha1(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      const { statusCode } = res;
-      const hash = crypto.createHash('sha1');
+    https.get(url, res => {
+      const { statusCode } = res
+      const hash = crypto.createHash('sha1')
       if (statusCode !== 200) {
-        const err = new Error('Request Failed.\n' +
-                          `Status Code: ${statusCode}`);
+        const err = new Error(
+          'Request Failed.\n' + `Status Code: ${statusCode}`,
+        )
         // consume response data to free up memory
-        res.resume();
-        reject(err);
+        res.resume()
+        reject(err)
       }
 
-      res.on('data', (chunk) => { hash.update(chunk); });
-      res.on('end', () => { resolve(hash.digest('hex')) });
-      res.on('error', reject);
-    });
-  });
-};
+      res.on('data', chunk => {
+        hash.update(chunk)
+      })
+      res.on('end', () => {
+        resolve(hash.digest('hex'))
+      })
+      res.on('error', reject)
+    })
+  })
+}
 
 function updateResolvedSha1(pkg) {
   // local dependency
 
-  if (!pkg.resolved) { return Promise.resolve(); }
-  const [url, sha1] = pkg.resolved.split("#", 2)
+  if (!pkg.resolved) {
+    return Promise.resolve()
+  }
+  const [url, sha1] = pkg.resolved.split('#', 2)
   if (!sha1) {
     return new Promise((resolve, reject) => {
-      getSha1(url).then(sha1 => {
-        // TODO: refactor - dont mutate pkg, return object { pkg, resolved }
-        pkg.resolved = `${url}#${sha1}`;
-        resolve();
-      }).catch(reject);
-    });
-  } else {
-    // nothing to do
-    return Promise.resolve();
-  };
+      getSha1(url)
+        .then(sha1 => {
+          // TODO: refactor - dont mutate pkg, return object { pkg, resolved }
+          pkg.resolved = `${url}#${sha1}`
+          resolve()
+        })
+        .catch(reject)
+    })
+  }
+  // nothing to do
+  return Promise.resolve()
 }
 
 function values(obj) {
-  const entries = [];
+  const entries = []
   for (const key in obj) {
-    entries.push(obj[key]);
+    entries.push(obj[key])
   }
-  return entries;
+  return entries
 }
 
-////////////////////////////////////////////////////////////////////////////////
+/// /////////////////////////////////////////////////////////////////////////////
 // Main
-////////////////////////////////////////////////////////////////////////////////
+/// /////////////////////////////////////////////////////////////////////////////
 
-const options = docopt(USAGE);
+const options = docopt(USAGE)
 
 const data = fs.readFileSync(options['--lockfile'], 'utf8')
 const json = lockfile.parse(data)
-if (json.type != "success") {
-  throw new Error("yarn.lock parse error")
+if (json.type != 'success') {
+  throw new Error('yarn.lock parse error')
 }
 
+// TODO: add option --production to generate yarn.nix file without devDependencies
 // Check for missing hashes in the yarn.lock and patch if necessary
-const pkgs = values(json.object);
+const pkgs = values(json.object)
 
-Promise.all(pkgs.map(updateResolvedSha1)).then(() => {
-  const origJson = lockfile.parse(data)
+Promise.all(pkgs.map(updateResolvedSha1))
+  .then(() => {
+    const origJson = lockfile.parse(data)
 
-  if (!equal(origJson, json)) {
-    console.error("found changes in the lockfile", options["--lockfile"]);
+    if (!equal(origJson, json)) {
+      console.error('found changes in the lockfile', options['--lockfile'])
 
-    if (options["--no-patch"]) {
-      console.error("...aborting");
-      process.exit(1);
+      if (options['--no-patch']) {
+        console.error('...aborting')
+        process.exit(1)
+      }
+
+      fs.writeFileSync(options['--lockfile'], lockfile.stringify(json.object))
     }
 
-    fs.writeFileSync(options['--lockfile'], lockfile.stringify(json.object));
-  }
-
-  if (!options['--no-nix']) {
-    generateNix(json.object);
-  }
-}).catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+    if (!options['--no-nix']) {
+      generateNix(json.object)
+    }
+  })
+  .catch(error => {
+    console.error(error)
+    process.exit(1)
+  })
