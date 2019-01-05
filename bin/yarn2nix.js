@@ -26,64 +26,113 @@ Options:
 `
 
 const HEAD = `
-{fetchurl, linkFarm, fetchgit, runCommandNoCC, gnutar}: rec {
+{ fetchurl, linkFarm, runCommandNoCC, gnutar }: rec {
   offline_cache = linkFarm "offline" packages;
   packages = [
 `.trim();
 
 ////////////////////////////////////////////////////////////////////////////////
 
-async function fetchgit(url, sha1) {
-  let file_name = path.basename(url);
-  let url_for_git = url.replace(/^git\+/, "")
-  const {error, stdout, stderr} = await execFile("nix-prefetch-git", [url_for_git, sha1], {});
-  const sha256 = JSON.parse(stdout).sha256;
-  if (typeof error !== 'undefined' || typeof sha256 === 'undefined') {
-    console.error("Could not prefetch git dependency " + url + ", skipping. This will probably go wrong!");
-    console.error("error " + error + " sha256 " + sha256);
-  }
-  else {
-    return `
-    {
-      name = "${file_name}";
-      path = let repo = fetchgit {
-          name = "${file_name}";
-          url = "${url_for_git}";
-          rev = "${sha1}";
-          sha256 = "${sha256}";
+// fetchgit transforms
+//
+// "shell-quote@git+https://github.com/srghma/node-shell-quote.git#without_unlicenced_jsonify":
+//   version "1.6.0"
+//   resolved "git+https://github.com/srghma/node-shell-quote.git#1234commit"
+//
+// to
+//
+// builtins.fetchGit {
+//   url = "https://github.com/srghma/node-shell-quote.git";
+//   ref = "without_unlicenced_jsonify";
+//   rev = "1234commit";
+// }
+//
+// and transforms
+//
+// "@graphile/plugin-supporter@git+https://1234user:1234pass@git.graphile.com/git/users/1234user/postgraphile-supporter.git":
+//   version "0.6.0"
+//   resolved "git+https://1234user:1234pass@git.graphile.com/git/users/1234user/postgraphile-supporter.git#1234commit"
+//
+// to
+//
+// builtins.fetchGit {
+//   url = "https://1234user:1234pass@git.graphile.com/git/users/1234user/postgraphile-supporter.git";
+//   rev = "1234commit";
+// }
+
+function fetchgit(file_name, url, rev, branch) {
+  return `    {
+    name = "${file_name}";
+    path =
+      let
+        repo = builtins.fetchGit {
+          url = "${url}";
+          ref = "${branch}";
+          rev = "${rev}";
         };
-      in runCommandNoCC "${file_name}" {buildInputs = [gnutar];} ''
-        # Set u+w because tar-fs can't unpack archives with read-only dirs
-        # https://github.com/mafintosh/tar-fs/issues/79
-        tar cf $out --mode u+w -C \${repo} .
-      '';
-    }`
+      in
+        runCommandNoCC "${file_name}" { buildInputs = [gnutar]; } ''
+          # Set u+w because tar-fs can't unpack archives with read-only dirs
+          # https://github.com/mafintosh/tar-fs/issues/79
+          tar cf $out --mode u+w -C \${repo} .
+        '';
+  }`
+}
+
+// Examples:
+// https://registry.yarnpkg.com/acorn-es7-plugin/-/acorn-es7-plugin-1.1.7.tgz
+// https://registry.npmjs.org/acorn-es7-plugin/-/acorn-es7-plugin-1.1.7.tgz
+// git+https://github.com/srghma/node-shell-quote.git
+// git+https://1234user:1234pass@git.graphile.com/git/users/1234user/postgraphile-supporter.git
+//
+// Note:
+// this function is duplicated at fixup_yarn_lock.js
+function urlToName(url) {
+  // TODO: before - , now - .replace(/\W/g, '_'), this breaks old generated yarn.nix files, is it fine?
+  if (url.startsWith('git+')) {
+    return path.basename(url)
+  } else {
+    return url
+      .replace("https://registry.yarnpkg.com/", "") // prevents having long directory names
+      .replace(/[@/:-]/g, '_'); // replace @ and : and - characted with underscore
   }
 }
 
 async function fetchLockedDep(depRange, dep) {
-  let depRangeParts = depRange.split('@');
+  const depRangeParts = depRange.split('@');
+
   if (!dep.resolved) return "";
-  let [url, sha1] = dep["resolved"].split("#");
-  if (url.match(/^git(\+[a-z0-9+.-]*)?:/)) {
-    return fetchgit(url, sha1);
+
+  const [url, sha1_or_rev] = dep["resolved"].split("#");
+
+  const file_name = urlToName(url)
+
+  if (url.startsWith('git+')) {
+    const rev = sha1_or_rev
+
+    const [_, branch] = depRange.split('#')
+
+    const url_for_git = url.replace(/^git\+/, "")
+
+    return fetchgit(file_name, url_for_git, rev, branch || "master");
   }
   else {
-    let file_name = url.replace("https://registry.yarnpkg.com/", "").replace(/[@/:-]/g, '_');
-    return `
-    {
+    const sha = sha1_or_rev
+
+    return `    {
       name = "${file_name}";
       path = fetchurl {
         name = "${file_name}";
         url  = "${url}";
-        sha1 = "${sha1}";
+        sha1 = "${sha}";
       };
     }`;
   }
 }
 
 function generateNix(lockedDependencies) {
-  let depPromises = Object.entries(lockedDependencies).map(([range, dep]) => fetchLockedDep(range, dep));
+  const depPromises = Object.entries(lockedDependencies).map(([range, dep]) => fetchLockedDep(range, dep));
+
   Promise.all(depPromises).then((chunks) => {
     console.log(HEAD);
     (new Set(chunks)).forEach((v) => console.log(v));
@@ -115,11 +164,13 @@ function getSha1(url) {
 
 function updateResolvedSha1(pkg) {
   // local dependency
+
   if (!pkg.resolved) { return Promise.resolve(); }
-  let [url, sha1] = pkg.resolved.split("#", 2)
+  const [url, sha1] = pkg.resolved.split("#", 2)
   if (!sha1) {
     return new Promise((resolve, reject) => {
       getSha1(url).then(sha1 => {
+        // TODO: refactor - dont mutate pkg, return object { pkg, resolved }
         pkg.resolved = `${url}#${sha1}`;
         resolve();
       }).catch(reject);
@@ -131,8 +182,8 @@ function updateResolvedSha1(pkg) {
 }
 
 function values(obj) {
-  var entries = [];
-  for (let key in obj) {
+  const entries = [];
+  for (const key in obj) {
     entries.push(obj[key]);
   }
   return entries;
@@ -142,18 +193,19 @@ function values(obj) {
 // Main
 ////////////////////////////////////////////////////////////////////////////////
 
-var options = docopt(USAGE);
+const options = docopt(USAGE);
 
-let data = fs.readFileSync(options['--lockfile'], 'utf8')
-let json = lockfile.parse(data)
+const data = fs.readFileSync(options['--lockfile'], 'utf8')
+const json = lockfile.parse(data)
 if (json.type != "success") {
   throw new Error("yarn.lock parse error")
 }
 
-// Check fore missing hashes in the yarn.lock and patch if necessary
-var pkgs = values(json.object);
+// Check for missing hashes in the yarn.lock and patch if necessary
+const pkgs = values(json.object);
+
 Promise.all(pkgs.map(updateResolvedSha1)).then(() => {
-  let origJson = lockfile.parse(data)
+  const origJson = lockfile.parse(data)
 
   if (!equal(origJson, json)) {
     console.error("found changes in the lockfile", options["--lockfile"]);

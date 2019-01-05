@@ -2,7 +2,6 @@
 with builtins;
 let
   inherit (yarn2nix) mkYarnPackage;
-  inherit (yarn2nix.pkgs) fetchFromGitHub;
   build = names: map buildEntry names;
   buildEntry = name: {
     inherit name;
@@ -23,7 +22,5 @@ in
   }).package-one;
 } // {
   duplicate-pkgs = import ./duplicate-pkgs { inherit yarn2nix; };
-  no-import-from-derivation = import ./no-import-from-derivation {
-    inherit mkYarnPackage fetchFromGitHub;
-  };
+  git-dependency = import ./git-dependency { inherit yarn2nix; };
 }

@@ -40,7 +40,7 @@ in rec {
   # Generates the yarn.nix from the yarn.lock file
   mkYarnNix = yarnLock:
     pkgs.runCommand "yarn.nix" {}
-      "${yarn2nix}/bin/yarn2nix --lockfile ${yarnLock} --no-patch > $out";
+    "${yarn2nix}/bin/yarn2nix --lockfile ${yarnLock} --no-patch > $out";
 
   # Loads the generated offline cache. This will be used by yarn as
   # the package source.
@@ -115,10 +115,10 @@ in rec {
         yarn config --offline set yarn-offline-mirror ${offlineCache}
 
         # Do not look up in the registry, but in the offline cache.
-        # TODO: Ask upstream to fix this mess.
-        sed -i -E '/resolved \"https:/{s|https://registry.yarnpkg.com/||; s|/|_|g; s|git:__|${offlineCache}/|; s|[@:-]|_|g}' yarn.lock
+        node ${./nix/fixup_yarn_lock.js} yarn.lock
 
         ${workspaceDependencyLinks}
+
         yarn install ${lib.escapeShellArgs yarnFlags}
 
         ${lib.concatStringsSep "\n" postInstall}
