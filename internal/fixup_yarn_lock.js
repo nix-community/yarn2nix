@@ -20,7 +20,7 @@ const readFile = readline.createInterface({
   terminal: false, // input and output should be treated like a TTY
 })
 
-// Examples:
+// Url examples:
 // https://registry.yarnpkg.com/acorn-es7-plugin/-/acorn-es7-plugin-1.1.7.tgz
 // https://registry.npmjs.org/acorn-es7-plugin/-/acorn-es7-plugin-1.1.7.tgz
 // git+https://github.com/srghma/node-shell-quote.git
@@ -28,8 +28,9 @@ const readFile = readline.createInterface({
 //
 // Note:
 // this function is duplicated at yarn2nix.js
+
+// TODO: use yarn workspaces to extract this function to lib and reuse in yarn2nix.js
 function urlToName(url) {
-  // TODO: before - , now - .replace(/\W/g, '_'), this breaks old generated yarn.nix files, is it fine?
   if (url.startsWith('git+')) {
     return path.basename(url)
   }
@@ -42,14 +43,14 @@ const result = []
 
 readFile
   .on('line', line => {
-    const arr = line.match(/^\ \ resolved "([^\#]+)#([^"]+)"$/)
+    const arr = line.match(/^ {2}resolved "([^#]+)#([^"]+)"$/)
 
     if (arr !== null) {
-      const [_, url, sha_or_rev] = arr
+      const [_, url, shaOrRev] = arr
 
-      const file_name = urlToName(url)
+      const fileName = urlToName(url)
 
-      result.push(`  resolved "${file_name}#${sha_or_rev}"`)
+      result.push(`  resolved "${fileName}#${shaOrRev}"`)
     } else {
       result.push(line)
     }

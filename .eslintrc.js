@@ -9,11 +9,6 @@ module.exports = {
     'plugin:import/errors',
   ],
   plugins: ['import'],
-  settings: {
-    'import/resolver': {
-      'babel-module': {},
-    },
-  },
   rules: {
     'no-unused-vars': [
       'error',

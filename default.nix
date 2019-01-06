@@ -38,9 +38,9 @@ in rec {
         (builtins.attrValues lib.licenses);
 
   # Generates the yarn.nix from the yarn.lock file
-  mkYarnNix = yarnLock:
+  mkYarnNix = { yarnLock, flags ? [] }:
     pkgs.runCommand "yarn.nix" {}
-    "${yarn2nix}/bin/yarn2nix --lockfile ${yarnLock} --no-patch > $out";
+    "${yarn2nix}/bin/yarn2nix --lockfile ${yarnLock} --no-patch ${lib.escapeShellArgs flags} > $out";
 
   # Loads the generated offline cache. This will be used by yarn as
   # the package source.
@@ -63,7 +63,7 @@ in rec {
     version,
     packageJSON,
     yarnLock,
-    yarnNix ? mkYarnNix yarnLock,
+    yarnNix ? mkYarnNix { inherit yarnLock; },
     yarnFlags ? defaultYarnFlags,
     pkgConfig ? {},
     preBuild ? "",
@@ -115,7 +115,7 @@ in rec {
         yarn config --offline set yarn-offline-mirror ${offlineCache}
 
         # Do not look up in the registry, but in the offline cache.
-        node ${./nix/fixup_yarn_lock.js} yarn.lock
+        node ${./internal/fixup_yarn_lock.js} yarn.lock
 
         ${workspaceDependencyLinks}
 
@@ -188,7 +188,7 @@ in rec {
     src,
     packageJSON ? src + "/package.json",
     yarnLock ? src + "/yarn.lock",
-    yarnNix ? mkYarnNix yarnLock,
+    yarnNix ? mkYarnNix { inherit yarnLock; },
     yarnFlags ? defaultYarnFlags,
     yarnPreBuild ? "",
     pkgConfig ? {},
@@ -284,7 +284,7 @@ in rec {
         mkdir -p $out/{bin,libexec/${pname}}
         mv node_modules $out/libexec/${pname}/node_modules
         mv deps $out/libexec/${pname}/deps
-        node ${./nix/fixup_bin.js} $out/bin $out/libexec/${pname}/node_modules ${lib.concatStringsSep " " publishBinsFor_}
+        node ${./internal/fixup_bin.js} $out/bin $out/libexec/${pname}/node_modules ${lib.concatStringsSep " " publishBinsFor_}
 
         runHook postInstall
       '';
@@ -321,13 +321,7 @@ in rec {
     yarnFlags = defaultYarnFlags ++ ["--production=true"];
 
     buildPhase = ''
-      testFilePresent () {
-        [ -e $1 ] && echo "Found $1" || (echo "Error - not found file $1" && exit 1)
-      }
-
-      testFileAbsent () {
-        [ ! -e $1 ] && echo "Not found $1" || (echo "Error - found file $1" && exit 1)
-      }
+      ${import ./nix/testFileShFunctions.nix}
 
       testFilePresent ./node_modules/.yarn-integrity
 

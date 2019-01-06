@@ -6,3 +6,6 @@ package-lock.json
 package-lock.json
 package.json
 .DS_Store
+
+# ignore import/no-unresolved eslint errors
+tests/workspace

@@ -3,10 +3,12 @@
 yarn2nix.mkYarnPackage {
   src = ./.;
   buildPhase = ''
-    test -f ./node_modules/.yarn-integrity
+    ${import ../../nix/testFileShFunctions.nix}
 
-    # dependencies
-    test -f ./node_modules/@types/minimist/package.json
-    test -f ./node_modules/minimist/package.json
+    testFilePresent ./node_modules/.yarn-integrity
+
+    # check dependencies are present
+    testFilePresent ./node_modules/@types/minimist/package.json
+    testFilePresent ./node_modules/minimist/package.json
   '';
 }
