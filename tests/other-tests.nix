@@ -9,7 +9,6 @@ in
   sendgrid-helpers        = import ./sendgrid-helpers { inherit yarn2nix; };
   duplicate-pkgs          = import ./duplicate-pkgs { inherit yarn2nix; };
   git-dependency          = import ./git-dependency { inherit yarn2nix; };
-  only-development        = import ./only-development { inherit yarn2nix; };
   only-production         = import ./only-production { inherit yarn2nix; };
   workspace-package-one   = workspace.package-one;
   workspace-package-two   = workspace.package-two;

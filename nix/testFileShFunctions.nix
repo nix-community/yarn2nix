@@ -1,9 +1,9 @@
 ''
 testFilePresent () {
-  [ -e $1 ] && echo "Found $1" || (echo "Error - not found file $1" && exit 1)
+  [ -f $1 ] && echo "Test passed: file is present - $1" || (echo "Test failed: file is absent - $1" && exit 1)
 }
 
-testFileAbsent () {
-  [ ! -e $1 ] && echo "Not found $1" || (echo "Error - found file $1" && exit 1)
+testFileOrDirAbsent () {
+  [ ! -e $1 ] && echo "Test passed: file or dir is absent - $1" || (echo "Test failed: file or dir is present - $1" && exit 1)
 }
 ''

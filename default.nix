@@ -143,8 +143,8 @@ in rec {
 
   mkYarnWorkspace = {
     src,
-    packageJSON ? src+"/package.json",
-    yarnLock ? src+"/yarn.lock",
+    packageJSON ? src + "/package.json",
+    yarnLock ? src + "/yarn.lock",
     packageOverrides ? {},
     ...
   }@attrs:
@@ -170,7 +170,7 @@ in rec {
     packagePaths = lib.concatMap (expandGlob src) packageGlobs;
     packages = lib.listToAttrs (map (src:
     let
-      packageJSON = src+"/package.json";
+      packageJSON = src + "/package.json";
       package = lib.importJSON packageJSON;
       allDependencies = lib.foldl (a: b: a // b) {} (map (field: lib.attrByPath [field] {} package) ["dependencies" "devDependencies"]);
     in rec {
@@ -314,6 +314,7 @@ in rec {
 
   yarn2nix = mkYarnPackage {
     src = ./.;
+
     # yarn2nix is the only package that requires the yarnNix option.
     # All the other projects can auto-generate that file.
     yarnNix = ./yarn.nix;
@@ -329,8 +330,8 @@ in rec {
       testFilePresent ./node_modules/@yarnpkg/lockfile/package.json
 
       # check devDependencies are not installed
-      testFileAbsent ./node_modules/.bin/eslint
-      testFileAbsent ./node_modules/eslint/package.json
+      testFileOrDirAbsent ./node_modules/.bin/eslint
+      testFileOrDirAbsent ./node_modules/eslint/package.json
     '';
   };
 }

@@ -1,8 +1,9 @@
 const https = require('https')
 const crypto = require('crypto')
 
-// TODO: make test for getSha1 function, i.e. the case when resolved is without sha1?
-// TODO: use https://github.com/request/request-promise-native
+// TODO:
+// make test case where getSha1 function is used, i.e. the case when resolved is without sha1?
+// consider using https://github.com/request/request-promise-native
 
 function getSha1(url) {
   return new Promise((resolve, reject) => {
@@ -33,7 +34,7 @@ function getSha1(url) {
 }
 
 // Object -> Object
-async function updateResolvedSha1(pkg) {
+async function fixPkgAddMissingSha1(pkg) {
   // local dependency
 
   if (!pkg.resolved) {
@@ -57,4 +58,4 @@ async function updateResolvedSha1(pkg) {
   }
 }
 
-module.exports = updateResolvedSha1
+module.exports = fixPkgAddMissingSha1

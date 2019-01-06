@@ -6,7 +6,7 @@ const { docopt } = require('docopt')
 const deepEqual = require('deep-equal')
 const R = require('ramda')
 
-const updateResolvedSha1 = require('./lib/updateResolvedSha1')
+const fixPkgAddMissingSha1 = require('./lib/fixPkgAddMissingSha1')
 const generateNix = require('./lib/generateNix')
 
 const USAGE = `
@@ -54,9 +54,12 @@ if (json.type !== 'success') {
 
 // Check for missing hashes in the yarn.lock and patch if necessary
 
-const pkgs = R.values(json.object)
+const pkgs = R.pipe(
+  R.values,
+  R.uniq,
+)(json.object)
 
-const fixedPkgsPromises = R.map(updateResolvedSha1, pkgs)
+const fixedPkgsPromises = R.map(fixPkgAddMissingSha1, pkgs)
 
 ;(async () => {
   const fixedPkgs = await Promise.all(fixedPkgsPromises)

@@ -26,6 +26,7 @@ const urlToName = require('./urlToName')
 //
 // builtins.fetchGit {
 //   url = "https://1234user:1234pass@git.graphile.com/git/users/1234user/postgraphile-supporter.git";
+//   ref = "master";
 //   rev = "1234commit";
 // }
 

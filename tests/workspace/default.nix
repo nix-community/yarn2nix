@@ -6,8 +6,8 @@ yarn2nix.mkYarnWorkspace {
   packageOverrides = {
     package-one = {
       publishBinsFor = [ "package-one" "gulp" ];
-      doInstallCheck = true;
 
+      doInstallCheck = true;
       installCheckPhase = ''
         $out/bin/package-one
         $out/bin/gulp --help
