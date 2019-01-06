@@ -1,5 +1,5 @@
 { pkgs ? import <nixpkgs> {}
-, nodejs ? pkgs.nodejs
+, nodejs ? pkgs.nodejs-8_x
 , yarn ? pkgs.yarn
 }:
 
