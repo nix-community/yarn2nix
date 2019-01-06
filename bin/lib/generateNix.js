@@ -49,10 +49,14 @@ function fetchgit(fileName, url, rev, branch) {
   }`
 }
 
-function fetchLockedDep(nameWithVersion, data) {
-  const { resolved } = data
+function fetchLockedDep(pkg) {
+  const { nameWithVersion, resolved } = pkg
 
-  if (!resolved) return ''
+  if (!resolved) {
+    throw new Error(
+      `Expected package to have property "resolved", but got ${pkg}`,
+    )
+  }
 
   const [url, sha1OrRev] = resolved.split('#')
 
@@ -88,10 +92,7 @@ const HEAD = `
 
 // Object -> String
 function generateNix(pkgs) {
-  const nameWithVersionAndPackageNix = R.mapObjIndexed(
-    (data, nameWithVersion) => fetchLockedDep(nameWithVersion, data),
-    pkgs,
-  )
+  const nameWithVersionAndPackageNix = R.map(fetchLockedDep, pkgs)
 
   const packagesDefinition = R.join(
     '\n',

@@ -38,7 +38,9 @@ async function fixPkgAddMissingSha1(pkg) {
   // local dependency
 
   if (!pkg.resolved) {
-    return pkg
+    throw new Error(
+      `Expected package to have property "resolved", but got ${pkg}`,
+    )
   }
 
   const [url, sha1] = pkg.resolved.split('#', 2)

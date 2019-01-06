@@ -6,4 +6,8 @@ env:
 
 # By building the tests, we also build yarn2nix itself.
 script:
+  # delete builtins.fetchGit cache, because it makes tests irreproduceable:
+  # test may pass with cache present, but in reality it should fail with "Cannot find revision" error
+  - rm -rdf ~/.cache/nix/git
+
   - ./run-tests.sh

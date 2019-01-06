@@ -7,6 +7,7 @@ const deepEqual = require('deep-equal')
 const R = require('ramda')
 
 const fixPkgAddMissingSha1 = require('./lib/fixPkgAddMissingSha1')
+const mapObjIndexedReturnArray = require('./lib/mapObjIndexedReturnArray')
 const generateNix = require('./lib/generateNix')
 
 const USAGE = `
@@ -55,8 +56,11 @@ if (json.type !== 'success') {
 // Check for missing hashes in the yarn.lock and patch if necessary
 
 const pkgs = R.pipe(
-  R.values,
-  R.uniq,
+  mapObjIndexedReturnArray((value, key) => ({
+    ...value,
+    nameWithVersion: key,
+  })),
+  R.uniqBy(R.prop('resolved')),
 )(json.object)
 
 const fixedPkgsPromises = R.map(fixPkgAddMissingSha1, pkgs)
