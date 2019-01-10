@@ -1,0 +1,11 @@
+{
+  "name": "@testcompany/two",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "upper-case": "^1.1.3",
+    "gulp": "^4.0.0",
+    "@testcompany/three": "*"
+  }
+}
