@@ -11,14 +11,14 @@ mkYarnPackage rec {
   yarnLock = ./yarn.lock;
   yarnNix = ./yarn.nix;
   buildPhase = ''
-    ${import ../../nix/testFileShFunctions.nix}
+    ${import ../../nix/expectShFunctions.nix}
 
-    testFilePresent ./node_modules/.yarn-integrity
+    expectFilePresent ./node_modules/.yarn-integrity
 
     # test bin
-    testFilePresent ./node_modules/.bin/acorn
+    expectFilePresent ./node_modules/.bin/acorn
 
     # devDependencies
-    testFilePresent ./node_modules/benchmark/package.json
+    expectFilePresent ./node_modules/benchmark/package.json
   '';
 }

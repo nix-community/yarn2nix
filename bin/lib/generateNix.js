@@ -53,9 +53,10 @@ function fetchLockedDep(pkg) {
   const { nameWithVersion, resolved } = pkg
 
   if (!resolved) {
-    throw new Error(
-      `Expected package to have property "resolved", but got ${pkg}`,
+    console.error(
+      `yarn2nix: can't find "resolved" field for package ${nameWithVersion}, you probably required it using "file:...", this feature is not supported, ignoring`,
     )
+    return ''
   }
 
   const [url, sha1OrRev] = resolved.split('#')

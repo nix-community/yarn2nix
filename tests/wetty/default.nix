@@ -3,14 +3,14 @@
 yarn2nix.mkYarnPackage {
   src = ./.;
   buildPhase = ''
-    ${import ../../nix/testFileShFunctions.nix}
+    ${import ../../nix/expectShFunctions.nix}
 
-    testFilePresent ./node_modules/.yarn-integrity
+    expectFilePresent ./node_modules/.yarn-integrity
 
     # dependencies
-    testFilePresent ./node_modules/express/package.json
+    expectFilePresent ./node_modules/express/package.json
 
     # devDependencies
-    testFilePresent ./node_modules/load-grunt-tasks/package.json
+    expectFilePresent ./node_modules/load-grunt-tasks/package.json
   '';
 }

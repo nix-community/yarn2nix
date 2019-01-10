@@ -6,14 +6,14 @@ yarn2nix.mkYarnPackage {
   yarnFlags = yarn2nix.defaultYarnFlags ++ ["--production=true"];
 
   buildPhase = ''
-    ${import ../../nix/testFileShFunctions.nix}
+    ${import ../../nix/expectShFunctions.nix}
 
-    testFilePresent ./node_modules/.yarn-integrity
+    expectFilePresent ./node_modules/.yarn-integrity
 
     # check dependencies are installed
-    testFilePresent ./node_modules/@types/minimist/package.json
+    expectFilePresent ./node_modules/@types/minimist/package.json
 
     # check devDependencies are not installed
-    testFileOrDirAbsent ./node_modules/minimist/package.json
+    expectFileOrDirAbsent ./node_modules/minimist/package.json
   '';
 }

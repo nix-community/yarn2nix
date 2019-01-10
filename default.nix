@@ -150,37 +150,44 @@ in rec {
   }@attrs:
   let
     package = lib.importJSON packageJSON;
+
     packageGlobs = package.workspaces;
+
     globElemToRegex = lib.replaceStrings ["*"] [".*"];
+
     # PathGlob -> [PathGlobElem]
     splitGlob = lib.splitString "/";
+
     # Path -> [PathGlobElem] -> [Path]
     # Note: Only directories are included, everything else is filtered out
     expandGlobList = base: globElems:
-    let
-      elemRegex = globElemToRegex (lib.head globElems);
-      rest = lib.tail globElems;
-      children = lib.attrNames (lib.filterAttrs (name: type: type == "directory") (builtins.readDir base));
-      matchingChildren = lib.filter (child: builtins.match elemRegex child != null) children;
-    in if globElems == []
-      then [ base ]
-      else lib.concatMap (child: expandGlobList (base+("/"+child)) rest) matchingChildren;
+      let
+        elemRegex = globElemToRegex (lib.head globElems);
+        rest = lib.tail globElems;
+        children = lib.attrNames (lib.filterAttrs (name: type: type == "directory") (builtins.readDir base));
+        matchingChildren = lib.filter (child: builtins.match elemRegex child != null) children;
+      in if globElems == []
+        then [ base ]
+        else lib.concatMap (child: expandGlobList (base+("/"+child)) rest) matchingChildren;
+
     # Path -> PathGlob -> [Path]
     expandGlob = base: glob: expandGlobList base (splitGlob glob);
+
     packagePaths = lib.concatMap (expandGlob src) packageGlobs;
+
     packages = lib.listToAttrs (map (src:
-    let
-      packageJSON = src + "/package.json";
-      package = lib.importJSON packageJSON;
-      allDependencies = lib.foldl (a: b: a // b) {} (map (field: lib.attrByPath [field] {} package) ["dependencies" "devDependencies"]);
-    in rec {
-      name = reformatPackageName package.name;
-      value = mkYarnPackage (builtins.removeAttrs attrs ["packageOverrides"] // {
-        inherit src packageJSON yarnLock;
-        workspaceDependencies = lib.mapAttrsToList (name: version: packages.${name})
-          (lib.filterAttrs (name: version: packages ? ${name}) allDependencies);
-      } // lib.attrByPath [name] {} packageOverrides);
-    }) packagePaths);
+      let
+        packageJSON = src + "/package.json";
+        package = lib.importJSON packageJSON;
+        allDependencies = lib.foldl (a: b: a // b) {} (map (field: lib.attrByPath [field] {} package) ["dependencies" "devDependencies"]);
+      in rec {
+        name = reformatPackageName package.name;
+        value = mkYarnPackage (builtins.removeAttrs attrs ["packageOverrides"] // {
+          inherit src packageJSON yarnLock;
+          workspaceDependencies = lib.mapAttrsToList (name: version: packages.${name})
+            (lib.filterAttrs (name: version: packages ? ${name}) allDependencies);
+        } // lib.attrByPath [name] {} packageOverrides);
+      }) packagePaths);
   in packages;
 
   mkYarnPackage = {
@@ -203,6 +210,7 @@ in rec {
       safeName = reformatPackageName pname;
       version = package.version;
       baseName = unlessNull name "${safeName}-${version}";
+      workspaceDependenciesTransitive = lib.unique ((lib.flatten (builtins.map (dep: dep.workspaceDependencies) workspaceDependencies)) ++ workspaceDependencies);
       deps = mkYarnModules {
         name = "${safeName}-modules-${version}";
         preBuild = yarnPreBuild;
@@ -226,7 +234,6 @@ in rec {
           fi
         }
       '';
-      workspaceDependenciesTransitive = lib.unique ((lib.flatten (builtins.map (dep: dep.workspaceDependencies) workspaceDependencies)) ++ workspaceDependencies);
       workspaceDependencyCopy = lib.concatMapStringsSep "\n"
         (dep: ''
           # ensure any existing scope directory is not a symlink
@@ -313,7 +320,25 @@ in rec {
     });
 
   yarn2nix = mkYarnPackage {
-    src = ./.;
+    src =
+      let
+        src = ./.;
+
+        mkFilter = { dirsToInclude, filesToInclude, root }: path: type:
+          let
+            inherit (pkgs.lib) any flip elem hasSuffix hasPrefix elemAt splitString;
+
+            subpath = elemAt (splitString "${toString root}/" path) 1;
+            spdir = elemAt (splitString "/" subpath) 0;
+          in elem spdir dirsToInclude ||
+            (type == "regular" && elem subpath filesToInclude);
+      in builtins.filterSource
+          (mkFilter {
+            dirsToInclude = ["bin"];
+            filesToInclude = ["package.json" "yarn.lock"];
+            root = src;
+          })
+          src;
 
     # yarn2nix is the only package that requires the yarnNix option.
     # All the other projects can auto-generate that file.
@@ -322,16 +347,16 @@ in rec {
     yarnFlags = defaultYarnFlags ++ ["--production=true"];
 
     buildPhase = ''
-      ${import ./nix/testFileShFunctions.nix}
+      ${import ./nix/expectShFunctions.nix}
 
-      testFilePresent ./node_modules/.yarn-integrity
+      expectFilePresent ./node_modules/.yarn-integrity
 
       # check dependencies are installed
-      testFilePresent ./node_modules/@yarnpkg/lockfile/package.json
+      expectFilePresent ./node_modules/@yarnpkg/lockfile/package.json
 
       # check devDependencies are not installed
-      testFileOrDirAbsent ./node_modules/.bin/eslint
-      testFileOrDirAbsent ./node_modules/eslint/package.json
+      expectFileOrDirAbsent ./node_modules/.bin/eslint
+      expectFileOrDirAbsent ./node_modules/eslint/package.json
     '';
   };
 }

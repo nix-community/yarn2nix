@@ -3,11 +3,11 @@
 yarn2nix.mkYarnPackage {
   src = ./.;
   buildPhase = ''
-    ${import ../../nix/testFileShFunctions.nix}
+    ${import ../../nix/expectShFunctions.nix}
 
-    testFilePresent ./node_modules/.yarn-integrity
+    expectFilePresent ./node_modules/.yarn-integrity
 
     # dependencies
-    testFilePresent ./node_modules/shell-quote/package.json
+    expectFilePresent ./node_modules/shell-quote/package.json
   '';
 }
