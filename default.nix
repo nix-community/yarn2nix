@@ -87,12 +87,14 @@ in rec {
       workspaceJSON = pkgs.writeText
         "${name}-workspace-package.json"
         (builtins.toJSON { private = true; workspaces = ["deps/**"]; }); # scoped packages need second splat
+
       workspaceDependencyLinks = lib.concatMapStringsSep "\n"
         (dep: ''
           mkdir -p "deps/${dep.pname}"
           ln -sf ${dep.packageJSON} "deps/${dep.pname}/package.json"
         '')
         workspaceDependencies;
+
     in stdenv.mkDerivation {
       inherit preBuild name;
       phases = ["configurePhase" "buildPhase"];
@@ -178,16 +180,29 @@ in rec {
     packages = lib.listToAttrs (map (src:
       let
         packageJSON = src + "/package.json";
+
         package = lib.importJSON packageJSON;
+
         allDependencies = lib.foldl (a: b: a // b) {} (map (field: lib.attrByPath [field] {} package) ["dependencies" "devDependencies"]);
+
+        workspaceDependencies =
+          lib.mapAttrsToList
+            (name: _version: packages.${name})
+            (lib.filterAttrs
+              (name: _version: packages ? ${name})
+              allDependencies
+            );
+
       in rec {
         name = reformatPackageName package.name;
-        value = mkYarnPackage (builtins.removeAttrs attrs ["packageOverrides"] // {
-          inherit src packageJSON yarnLock;
-          workspaceDependencies = lib.mapAttrsToList (name: version: packages.${name})
-            (lib.filterAttrs (name: version: packages ? ${name}) allDependencies);
-        } // lib.attrByPath [name] {} packageOverrides);
-      }) packagePaths);
+        value = mkYarnPackage (
+          builtins.removeAttrs attrs ["packageOverrides"]
+          // { inherit src packageJSON yarnLock workspaceDependencies; }
+          // lib.attrByPath [name] {} packageOverrides
+        );
+      })
+      packagePaths
+    );
   in packages;
 
   mkYarnPackage = {
@@ -210,14 +225,21 @@ in rec {
       safeName = reformatPackageName pname;
       version = package.version;
       baseName = unlessNull name "${safeName}-${version}";
-      workspaceDependenciesTransitive = lib.unique ((lib.flatten (builtins.map (dep: dep.workspaceDependencies) workspaceDependencies)) ++ workspaceDependencies);
+
+      workspaceDependenciesTransitive = lib.unique (
+        (lib.flatten (builtins.map (dep: dep.workspaceDependencies) workspaceDependencies))
+        ++ workspaceDependencies
+      );
+
       deps = mkYarnModules {
         name = "${safeName}-modules-${version}";
         preBuild = yarnPreBuild;
         workspaceDependencies = workspaceDependenciesTransitive;
         inherit packageJSON pname version yarnLock yarnNix yarnFlags pkgConfig;
       };
+
       publishBinsFor_ = unlessNull publishBinsFor [pname];
+
       linkDirFunction = ''
         linkDirToDirLinks() {
           target=$1
@@ -234,6 +256,7 @@ in rec {
           fi
         }
       '';
+
       workspaceDependencyCopy = lib.concatMapStringsSep "\n"
         (dep: ''
           # ensure any existing scope directory is not a symlink
@@ -245,6 +268,7 @@ in rec {
           fi
         '')
         workspaceDependenciesTransitive;
+
     in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig" "workspaceDependencies"] // {
       inherit src;
 
@@ -274,6 +298,7 @@ in rec {
         chmod -R +w node_modules
 
         ${linkDirFunction}
+
         linkDirToDirLinks "$(dirname node_modules/${pname})"
         ln -s "deps/${pname}" "node_modules/${pname}"
         ${workspaceDependencyCopy}
