@@ -58,7 +58,10 @@ readFile
   .on('close', () => {
     fs.writeFile(yarnLockPath, result.join('\n'), 'utf8', err => {
       if (err) {
-        console.error('> Fatal error when trying to write to yarn.lock', err)
+        console.error(
+          'fixup_yarn_lock: fatal error when trying to write to yarn.lock',
+          err,
+        )
       }
     })
   })

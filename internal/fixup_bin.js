@@ -12,14 +12,14 @@ const nodeModules = process.argv[3]
 const packagesToPublishBin = process.argv.slice(4)
 
 function processPackage(name) {
-  console.log('Processing ', name)
+  console.log('fixup_bin: Processing ', name)
 
   const packagePath = `${nodeModules}/${name}`
   const packageJsonPath = `${packagePath}/package.json`
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath))
 
   if (!packageJson.bin) {
-    console.log('No binaries provided')
+    console.log('fixup_bin: No binaries provided')
     return
   }
 
@@ -32,13 +32,19 @@ function processPackage(name) {
     packageJson.bin[packageJson.name] = binName
   }
 
-  // TODO: yarn workspaces
   // eslint-disable-next-line no-restricted-syntax, guard-for-in
   for (const binName in packageJson.bin) {
     const binPath = packageJson.bin[binName]
-    const fullBinPath = path.normalize(`${packagePath}/${binPath}`)
-    fs.symlinkSync(fullBinPath, `${derivationBinPath}/${binName}`)
-    console.log('Linked', binName)
+    const normalizedBinName = binName.replace('@', '').replace('/', '-')
+
+    const targetPath = path.normalize(`${packagePath}/${binPath}`)
+    const createdPath = `${derivationBinPath}/${normalizedBinName}`
+
+    console.log(
+      `fixup_bin: creating link ${createdPath} that points to ${targetPath}`,
+    )
+
+    fs.symlinkSync(targetPath, createdPath)
   }
 }
 

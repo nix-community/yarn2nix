@@ -5,7 +5,7 @@ yarn2nix.mkYarnWorkspace {
 
   packageOverrides = {
     testcompany-one = {
-      publishBinsFor = [ "testcompany-one" "gulp" ];
+      publishBinsFor = [ "@testcompany/one" "gulp" ];
 
       doInstallCheck = true;
       installCheckPhase = ''

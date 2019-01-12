@@ -5,6 +5,10 @@
 
 let
   inherit (pkgs) stdenv lib fetchurl linkFarm callPackage git;
+
+  compose = f: g: x: f (g x);
+  id = x: x;
+  composeAll = builtins.foldl' compose id;
 in rec {
   # Export yarn again to make it easier to find out which yarn was used.
   inherit yarn;
@@ -58,8 +62,8 @@ in rec {
   ];
 
   mkYarnModules = {
-    name,
-    pname,
+    name, # safe name and version, e.g. testcompany-one-modules-1.0.0
+    pname, # original name, e.g @testcompany/one
     version,
     packageJSON,
     yarnLock,
@@ -67,7 +71,7 @@ in rec {
     yarnFlags ? defaultYarnFlags,
     pkgConfig ? {},
     preBuild ? "",
-    workspaceDependencies ? [],
+    workspaceDependencies ? [], # List of yarn packages
   }:
     let
       offlineCache = importOfflineCache yarnNix;
@@ -84,6 +88,7 @@ in rec {
         else
           ""
       ) (builtins.attrNames pkgConfig));
+
       workspaceJSON = pkgs.writeText
         "${name}-workspace-package.json"
         (builtins.toJSON { private = true; workspaces = ["deps/**"]; }); # scoped packages need second splat
@@ -185,16 +190,21 @@ in rec {
 
         allDependencies = lib.foldl (a: b: a // b) {} (map (field: lib.attrByPath [field] {} package) ["dependencies" "devDependencies"]);
 
-        workspaceDependencies =
-          lib.mapAttrsToList
-            (name: _version: packages.${name})
-            (lib.filterAttrs
-              (name: _version: packages ? ${name})
-              allDependencies
-            );
+        # { [name: String] : { pname : String, packageJSON : String } } -> { [pname: String] : version } -> [{ pname : String, packageJSON : String }]
+        getWorkspaceDependencies = packages: allDependencies:
+          let
+            packageList = lib.attrValues packages;
+          in
+            composeAll [
+              (lib.filter (x: x != null))
+              (lib.mapAttrsToList (pname: _version: lib.findFirst (package: package.pname == pname) null packageList))
+            ] allDependencies;
 
-      in rec {
+        workspaceDependencies = getWorkspaceDependencies packages allDependencies;
+
         name = reformatPackageName package.name;
+      in {
+        inherit name;
         value = mkYarnPackage (
           builtins.removeAttrs attrs ["packageOverrides"]
           // { inherit src packageJSON yarnLock workspaceDependencies; }
@@ -216,7 +226,7 @@ in rec {
     pkgConfig ? {},
     extraBuildInputs ? [],
     publishBinsFor ? null,
-    workspaceDependencies ? [],
+    workspaceDependencies ? [], # List of yarnPackages
     ...
   }@attrs:
     let
@@ -270,7 +280,7 @@ in rec {
         workspaceDependenciesTransitive;
 
     in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig" "workspaceDependencies"] // {
-      inherit src;
+      inherit src pname;
 
       name = baseName;
 
@@ -316,12 +326,14 @@ in rec {
         mkdir -p $out/{bin,libexec/${pname}}
         mv node_modules $out/libexec/${pname}/node_modules
         mv deps $out/libexec/${pname}/deps
+
         node ${./internal/fixup_bin.js} $out/bin $out/libexec/${pname}/node_modules ${lib.concatStringsSep " " publishBinsFor_}
 
         runHook postInstall
       '';
 
       doDist = true;
+
       distPhase = attrs.distPhase or ''
         # pack command ignores cwd option
         rm -f .yarnrc
