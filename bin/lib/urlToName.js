@@ -18,7 +18,7 @@ function urlToName(url) {
 
   return url
     .replace('https://registry.yarnpkg.com/', '') // prevents having long directory names
-    .replace(/[@/:-]/g, '_') // replace @ and : and - characted with underscore
+    .replace(/[@/:-]/g, '_') // replace @ and : and - characters with underscore
 }
 
 module.exports = urlToName
