@@ -23,8 +23,8 @@ expectEqual () {
     echo "Test passed: output is equal to expected_output"
   else
     echo "Test failed: output is not equal to expected_output:"
-    echo "  output - $output"
-    echo "  expected_output - $expected_output"
+    echo "  output - $1"
+    echo "  expected_output - $2"
     exit 1
   fi
 }
