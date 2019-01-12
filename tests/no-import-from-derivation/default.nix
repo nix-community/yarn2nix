@@ -11,7 +11,7 @@ mkYarnPackage rec {
   yarnLock = ./yarn.lock;
   yarnNix = ./yarn.nix;
   buildPhase = ''
-    ${import ../../nix/expectShFunctions.nix}
+    source ${../../nix/expectShFunctions.sh}
 
     expectFilePresent ./node_modules/.yarn-integrity
 

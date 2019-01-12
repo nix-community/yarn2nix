@@ -1,4 +1,3 @@
-''
 expectFilePresent () {
   if [ -f "$1" ]; then
     echo "Test passed: file is present - $1"
@@ -29,4 +28,3 @@ expectEqual () {
     exit 1
   fi
 }
-''

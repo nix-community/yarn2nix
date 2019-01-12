@@ -384,7 +384,7 @@ in rec {
     yarnFlags = defaultYarnFlags ++ ["--production=true"];
 
     buildPhase = ''
-      ${import ./nix/expectShFunctions.nix}
+      source ${./nix/expectShFunctions.sh}
 
       expectFilePresent ./node_modules/.yarn-integrity
 

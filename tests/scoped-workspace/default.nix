@@ -9,7 +9,7 @@ yarn2nix.mkYarnWorkspace {
 
       doInstallCheck = true;
       installCheckPhase = ''
-        ${import ../../nix/expectShFunctions.nix}
+        source ${../../nix/expectShFunctions.sh}
 
         output=$($out/bin/testcompany-one)
         expected_output="HELLO FROM @TESTCOMPANY/TWO!"
