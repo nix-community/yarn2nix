@@ -143,6 +143,7 @@ in rec {
 
   mkYarnWorkspace = {
     src,
+    sourceCleaner ? lib.id,
     packageJSON ? src+"/package.json",
     yarnLock ? src+"/yarn.lock",
     packageOverrides ? {},
@@ -175,8 +176,9 @@ in rec {
       allDependencies = lib.foldl (a: b: a // b) {} (map (field: lib.attrByPath [field] {} package) ["dependencies" "devDependencies"]);
     in rec {
       name = reformatPackageName package.name;
-      value = mkYarnPackage (builtins.removeAttrs attrs ["packageOverrides"] // {
-        inherit src packageJSON yarnLock;
+      value = mkYarnPackage (builtins.removeAttrs attrs ["sourceCleaner" "packageOverrides"] // {
+        inherit packageJSON yarnLock;
+        src = sourceCleaner src;
         workspaceDependencies = lib.mapAttrsToList (name: version: packages.${name})
           (lib.filterAttrs (name: version: packages ? ${name}) allDependencies);
       } // lib.attrByPath [name] {} packageOverrides);
