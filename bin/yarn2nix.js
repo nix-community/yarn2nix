@@ -50,9 +50,6 @@ if (json.type !== 'success') {
   throw new Error('yarn.lock parse error')
 }
 
-// TODO: node version https://travis-ci.org/moretea/yarn2nix/jobs/475687303
-// TODO: what happens with peerDependencies?
-
 // Check for missing hashes in the yarn.lock and patch if necessary
 
 const pkgs = R.pipe(

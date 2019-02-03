@@ -75,9 +75,11 @@ in rec {
   }:
     let
       offlineCache = importOfflineCache yarnNix;
+
       extraBuildInputs = (lib.flatten (builtins.map (key:
-        pkgConfig.${key} . buildInputs or []
+        pkgConfig.${key}.buildInputs or []
       ) (builtins.attrNames pkgConfig)));
+
       postInstall = (builtins.map (key:
         if (pkgConfig.${key} ? postInstall) then
           ''
@@ -190,7 +192,7 @@ in rec {
 
         allDependencies = lib.foldl (a: b: a // b) {} (map (field: lib.attrByPath [field] {} package) ["dependencies" "devDependencies"]);
 
-        # { [name: String] : { pname : String, packageJSON : String } } -> { [pname: String] : version } -> [{ pname : String, packageJSON : String }]
+        # { [name: String] : { pname : String, packageJSON : String, ... } } -> { [pname: String] : version } -> [{ pname : String, packageJSON : String, ... }]
         getWorkspaceDependencies = packages: allDependencies:
           let
             packageList = lib.attrValues packages;
