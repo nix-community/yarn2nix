@@ -8,6 +8,7 @@ yarn2nix.mkYarnWorkspace {
       publishBinsFor = [ "@testcompany/one" "gulp" ];
 
       doInstallCheck = true;
+
       installCheckPhase = ''
         source ${../../nix/expectShFunctions.sh}
 
