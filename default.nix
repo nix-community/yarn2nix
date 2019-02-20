@@ -4,7 +4,7 @@
 }:
 
 let
-  inherit (pkgs) stdenv lib fetchurl linkFarm callPackage git;
+  inherit (pkgs) stdenv lib fetchurl linkFarm callPackage git rsync;
 
   compose = f: g: x: f (g x);
   id = x: x;
@@ -286,7 +286,7 @@ in rec {
 
       name = baseName;
 
-      buildInputs = [ yarn nodejs ] ++ extraBuildInputs;
+      buildInputs = [ yarn nodejs rsync ] ++ extraBuildInputs;
 
       node_modules = deps + "/node_modules";
 
@@ -301,9 +301,9 @@ in rec {
         done
 
         mkdir -p "deps/${pname}"
-        shopt -s extglob
-        cp -r !(deps) "deps/${pname}"
-        shopt -u extglob
+
+        rsync --recursive --times --exclude="deps" ./ "deps/${pname}/"
+
         ln -s ${deps}/deps/${pname}/node_modules "deps/${pname}/node_modules"
 
         cp -r $node_modules node_modules
