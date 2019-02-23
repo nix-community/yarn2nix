@@ -300,9 +300,12 @@ in rec {
           fi
         done
 
-        mkdir -p "deps/${pname}"
-
-        rsync --recursive --times --exclude="deps" ./ "deps/${pname}/"
+        # move convent of . to ./deps/${pname}
+        mv $PWD $NIX_BUILD_TOP/temp
+        mkdir -p "$PWD/deps/${pname}"
+        rm -fd "$PWD/deps/${pname}"
+        mv $NIX_BUILD_TOP/temp "$PWD/deps/${pname}"
+        cd $PWD
 
         ln -s ${deps}/deps/${pname}/node_modules "deps/${pname}/node_modules"
 
@@ -313,6 +316,7 @@ in rec {
 
         linkDirToDirLinks "$(dirname node_modules/${pname})"
         ln -s "deps/${pname}" "node_modules/${pname}"
+
         ${workspaceDependencyCopy}
 
         # Help yarn commands run in other phases find the package
