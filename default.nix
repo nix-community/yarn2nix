@@ -71,6 +71,7 @@ in rec {
     yarnFlags ? defaultYarnFlags,
     pkgConfig ? {},
     preBuild ? "",
+    postBuild ? "",
     workspaceDependencies ? [], # List of yarn packages
   }:
     let
@@ -103,7 +104,7 @@ in rec {
         workspaceDependencies;
 
     in stdenv.mkDerivation {
-      inherit preBuild name;
+      inherit preBuild postBuild name;
       phases = ["configurePhase" "buildPhase"];
       buildInputs = [ yarn nodejs git ] ++ extraBuildInputs;
 
@@ -136,6 +137,8 @@ in rec {
         mv node_modules $out/
         mv deps $out/
         patchShebangs $out
+
+        runHook postBuild
       '';
     };
 
