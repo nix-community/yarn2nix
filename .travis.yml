@@ -1,6 +1,5 @@
 language: nix
 env:
-  - NIXPKGS_CHANNEL=nixos-18.03
   - NIXPKGS_CHANNEL=nixos-18.09
   - NIXPKGS_CHANNEL=nixos-unstable
 
