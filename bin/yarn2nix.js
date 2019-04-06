@@ -6,9 +6,9 @@ const { docopt } = require('docopt')
 const deepEqual = require('deep-equal')
 const R = require('ramda')
 
-const fixPkgAddMissingSha1 = require('./lib/fixPkgAddMissingSha1')
-const mapObjIndexedReturnArray = require('./lib/mapObjIndexedReturnArray')
-const generateNix = require('./lib/generateNix')
+const fixPkgAddMissingSha1 = require('../lib/fixPkgAddMissingSha1')
+const mapObjIndexedReturnArray = require('../lib/mapObjIndexedReturnArray')
+const generateNix = require('../lib/generateNix')
 
 const USAGE = `
 Usage: yarn2nix [options]

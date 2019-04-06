@@ -5,8 +5,9 @@
  */
 
 const fs = require('fs')
-const path = require('path')
 const readline = require('readline')
+
+const urlToName = require('../lib/urlToName')
 
 const yarnLockPath = process.argv[2]
 
@@ -19,25 +20,6 @@ const readFile = readline.createInterface({
 
   terminal: false, // input and output should be treated like a TTY
 })
-
-// Url examples:
-// https://registry.yarnpkg.com/acorn-es7-plugin/-/acorn-es7-plugin-1.1.7.tgz
-// https://registry.npmjs.org/acorn-es7-plugin/-/acorn-es7-plugin-1.1.7.tgz
-// git+https://github.com/srghma/node-shell-quote.git
-// git+https://1234user:1234pass@git.graphile.com/git/users/1234user/postgraphile-supporter.git
-//
-// Note:
-// this function is duplicated at yarn2nix.js
-
-// TODO: use yarn workspaces to extract this function to lib and reuse in yarn2nix.js
-function urlToName(url) {
-  if (url.startsWith('git+')) {
-    return path.basename(url)
-  }
-  return url
-    .replace('https://registry.yarnpkg.com/', '') // prevents having long directory names
-    .replace(/[@/:-]/g, '_') // replace @ and : and - characters with underscore
-}
 
 const result = []
 

@@ -4,7 +4,7 @@
 }:
 
 let
-  inherit (pkgs) stdenv lib fetchurl linkFarm callPackage git rsync;
+  inherit (pkgs) stdenv lib fetchurl linkFarm callPackage git rsync makeWrapper;
 
   compose = f: g: x: f (g x);
   id = x: x;
@@ -125,7 +125,7 @@ in rec {
         yarn config --offline set yarn-offline-mirror ${offlineCache}
 
         # Do not look up in the registry, but in the offline cache.
-        node ${./internal/fixup_yarn_lock.js} yarn.lock
+        ${fixup_yarn_lock}/bin/fixup_yarn_lock yarn.lock
 
         ${workspaceDependencyLinks}
 
@@ -380,7 +380,7 @@ in rec {
             (type == "regular" && elem subpath filesToInclude);
       in builtins.filterSource
           (mkFilter {
-            dirsToInclude = ["bin"];
+            dirsToInclude = ["bin" "lib"];
             filesToInclude = ["package.json" "yarn.lock"];
             root = src;
           })
@@ -403,6 +403,24 @@ in rec {
       # check devDependencies are not installed
       expectFileOrDirAbsent ./node_modules/.bin/eslint
       expectFileOrDirAbsent ./node_modules/eslint/package.json
+    '';
+  };
+
+  fixup_yarn_lock = stdenv.mkDerivation rec {
+    name = "fixup_yarn_lock";
+
+    buildInputs = [ nodejs ];
+
+    phases = [ "installPhase" ];
+
+    installPhase = ''
+      mkdir -p $out/lib
+      mkdir -p $out/bin
+
+      cp ${./lib/urlToName.js} $out/lib/urlToName.js
+      cp ${./internal/fixup_yarn_lock.js} $out/bin/fixup_yarn_lock
+
+      patchShebangs
     '';
   };
 }
