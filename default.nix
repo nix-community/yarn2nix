@@ -420,7 +420,7 @@ in rec {
       cp ${./lib/urlToName.js} $out/lib/urlToName.js
       cp ${./internal/fixup_yarn_lock.js} $out/bin/fixup_yarn_lock
 
-      patchShebangs
+      patchShebangs $out
     '';
   };
 }
