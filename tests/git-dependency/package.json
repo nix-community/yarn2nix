@@ -1,0 +1,9 @@
+{
+  "name": "git-dependency",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "shell-quote": "git+https://github.com/srghma/node-shell-quote.git#without_unlicenced_jsonify"
+  }
+}

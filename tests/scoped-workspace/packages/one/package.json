@@ -1,11 +1,11 @@
 {
-  "name": "package-one",
+  "name": "@testcompany/one",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
   "bin": "./index.js",
   "dependencies": {
-    "package-two": "^1.0.0",
-    "package-three": "^1.0.0"
+    "@testcompany/two": "*",
+    "@testcompany/three": "*"
   }
 }

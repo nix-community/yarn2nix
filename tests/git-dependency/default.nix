@@ -7,8 +7,7 @@ yarn2nix.mkYarnPackage {
 
     expectFilePresent ./node_modules/.yarn-integrity
 
-    # check dependencies are present
-    expectFilePresent ./node_modules/@types/minimist/package.json
-    expectFilePresent ./node_modules/minimist/package.json
+    # dependencies
+    expectFilePresent ./node_modules/shell-quote/package.json
   '';
 }

@@ -1,0 +1,9 @@
+{
+  "linters": {
+    "*.js": [
+      "prettier-eslint --write",
+      "eslint --color",
+      "git add"
+    ]
+  }
+}

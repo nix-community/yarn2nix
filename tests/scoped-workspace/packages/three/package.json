@@ -1,10 +1,8 @@
 {
-  "name": "duplicate-pkgs",
+  "name": "@testcompany/three",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "@types/minimist": "^1.2.0",
-    "minimist": "^1.2.0"
   }
 }

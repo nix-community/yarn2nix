@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 set -euo pipefail
 
 : "${NIXPKGS_CHANNEL:=nixpkgs-unstable}"
@@ -11,10 +12,14 @@ nix_options=(
 )
 
 echo "--- Running tests with IFD enabled"
-nix-build tests "${nix_options[@]}" \
+
+nix-build tests/other-tests.nix "${nix_options[@]}" \
+  --option allow-import-from-derivation true
+
+nix-build tests/with-import-from-derivation-tests.nix "${nix_options[@]}" \
   --option allow-import-from-derivation true
 
 echo "--- Running tests with IFD disabled"
-nix-build tests "${nix_options[@]}" \
-  --option allow-import-from-derivation false \
-  -A no-import-from-derivation
+
+nix-build tests/with-import-from-derivation-tests.nix "${nix_options[@]}" \
+  --option allow-import-from-derivation false

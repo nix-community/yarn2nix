@@ -1,17 +1,14 @@
 #!/usr/bin/env node
-"use strict";
 
-const crypto = require('crypto');
-const fs = require("fs");
-const https = require("https");
-const path = require("path");
-const util = require("util");
+const fs = require('fs')
+const lockfile = require('@yarnpkg/lockfile')
+const { docopt } = require('docopt')
+const deepEqual = require('deep-equal')
+const R = require('ramda')
 
-const lockfile = require("@yarnpkg/lockfile")
-const docopt = require("docopt").docopt;
-const equal = require("deep-equal");
-
-////////////////////////////////////////////////////////////////////////////////
+const fixPkgAddMissingSha1 = require('../lib/fixPkgAddMissingSha1')
+const mapObjIndexedReturnArray = require('../lib/mapObjIndexedReturnArray')
+const generateNix = require('../lib/generateNix')
 
 const USAGE = `
 Usage: yarn2nix [options]
@@ -23,127 +20,70 @@ Options:
   --lockfile=FILE  Specify path to the lockfile [default: ./yarn.lock].
 `
 
-const HEAD = `
-{fetchurl, linkFarm}: rec {
-  offline_cache = linkFarm "offline" packages;
-  packages = [
-`.trim();
+const options = docopt(USAGE)
 
-////////////////////////////////////////////////////////////////////////////////
+const data = fs.readFileSync(options['--lockfile'], 'utf8')
 
-function generateNix(lockedDependencies) {
-  let found = {};
+// json example:
 
-  console.log(HEAD)
+// {
+//   type:'success',
+//   object:{
+//     'abbrev@1':{
+//       version:'1.0.9',
+//       resolved:'https://registry.yarnpkg.com/abbrev/-/abbrev-1.0.9.tgz#91b4792588a7738c25f35dd6f63752a2f8776135'
+//     },
+//     'shell-quote@git+https://github.com/srghma/node-shell-quote.git#without_unlicenced_jsonify':{
+//       version:'1.6.0',
+//       resolved:'git+https://github.com/srghma/node-shell-quote.git#0aa381896e0cd7409ead15fd444f225807a61e0a'
+//     },
+//     '@graphile/plugin-supporter@git+https://1234user:1234pass@git.graphile.com/git/users/1234user/postgraphile-supporter.git':{
+//       version:'1.6.0',
+//       resolved:'git+https://1234user:1234pass@git.graphile.com/git/users/1234user/postgraphile-supporter.git#1234commit'
+//     },
+//   }
+// }
 
-  for (var depRange in lockedDependencies) {
-    let dep = lockedDependencies[depRange];
+const json = lockfile.parse(data)
 
-    let depRangeParts = depRange.split('@');
-    if (!dep.resolved) continue;
-    let [url, sha1] = dep["resolved"].split("#");
-    let file_name = url.replace("https://registry.yarnpkg.com/", "").replace(/[@/:-]/g, '_');
+if (json.type !== 'success') {
+  throw new Error('yarn.lock parse error')
+}
 
-    if (found.hasOwnProperty(file_name)) {
-      continue;
-    } else {
-      found[file_name] = null;
+// Check for missing hashes in the yarn.lock and patch if necessary
+
+const pkgs = R.pipe(
+  mapObjIndexedReturnArray((value, key) => ({
+    ...value,
+    nameWithVersion: key,
+  })),
+  R.uniqBy(R.prop('resolved')),
+)(json.object)
+
+const fixedPkgsPromises = R.map(fixPkgAddMissingSha1, pkgs)
+
+;(async () => {
+  const fixedPkgs = await Promise.all(fixedPkgsPromises)
+
+  const origJson = lockfile.parse(data)
+
+  if (!deepEqual(origJson, json)) {
+    console.error('found changes in the lockfile', options['--lockfile'])
+
+    if (options['--no-patch']) {
+      console.error('...aborting')
+      process.exit(1)
     }
 
-
-    console.log(`
-    {
-      name = "${file_name}";
-      path = fetchurl {
-        name = "${file_name}";
-        url  = "${url}";
-        sha1 = "${sha1}";
-      };
-    }`)
-  }
-
-  console.log("  ];")
-  console.log("}")
-}
-
-
-function getSha1(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      const { statusCode } = res;
-      const hash = crypto.createHash('sha1');
-      if (statusCode !== 200) {
-        const err = new Error('Request Failed.\n' +
-                          `Status Code: ${statusCode}`);
-        // consume response data to free up memory
-        res.resume();
-        reject(err);
-      }
-
-      res.on('data', (chunk) => { hash.update(chunk); });
-      res.on('end', () => { resolve(hash.digest('hex')) });
-      res.on('error', reject);
-    });
-  });
-};
-
-function updateResolvedSha1(pkg) {
-  // local dependency
-  if (!pkg.resolved) { return Promise.resolve(); }
-  let [url, sha1] = pkg.resolved.split("#", 2)
-  if (!sha1) {
-    return new Promise((resolve, reject) => {
-      getSha1(url).then(sha1 => {
-        pkg.resolved = `${url}#${sha1}`;
-        resolve();
-      }).catch(reject);
-    });
-  } else {
-    // nothing to do
-    return Promise.resolve();
-  };
-}
-
-function values(obj) {
-  var entries = [];
-  for (let key in obj) {
-    entries.push(obj[key]);
-  }
-  return entries;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Main
-////////////////////////////////////////////////////////////////////////////////
-
-var options = docopt(USAGE);
-
-let data = fs.readFileSync(options['--lockfile'], 'utf8')
-let json = lockfile.parse(data)
-if (json.type != "success") {
-  throw new Error("yarn.lock parse error")
-}
-
-// Check fore missing hashes in the yarn.lock and patch if necessary
-var pkgs = values(json.object);
-Promise.all(pkgs.map(updateResolvedSha1)).then(() => {
-  let origJson = lockfile.parse(data)
-
-  if (!equal(origJson, json)) {
-    console.error("found changes in the lockfile", options["--lockfile"]);
-
-    if (options["--no-patch"]) {
-      console.error("...aborting");
-      process.exit(1);
-    }
-
-    fs.writeFileSync(options['--lockfile'], lockfile.stringify(json.object));
+    fs.writeFileSync(options['--lockfile'], lockfile.stringify(json.object))
   }
 
   if (!options['--no-nix']) {
-    generateNix(json.object);
+    // print to stdout
+    console.log(generateNix(fixedPkgs))
   }
-}).catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+})().catch(error => {
+  console.error(error)
+
+  process.exit(1)
+})
