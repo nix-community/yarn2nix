@@ -6,20 +6,19 @@ Converts `yarn.lock` files into nix expression.
 
 1. Make yarn and yarn2nix available in your shell.
    ```sh
-     cd $GIT_REPO
-     nix-env -i yarn2nix -f .
-     nix-env -i yarn -f .
+   cd $GIT_REPO
+   nix-env -i yarn2nix -f .
+   nix-env -i yarn -f .
    ```
 2. Go to your project dir
 3. If you have not generated a yarn.lock file before, run
    ```sh
-     yarn install
+   yarn install
    ```
 4. Create a `yarn.nix` via:
-  ```sh
-    yarn2nix > yarn.nix
-  ```
-
+   ```sh
+   yarn2nix > yarn.nix
+   ```
 5. Create a `default.nix` to build your application (see the example below)
 
 ## Requirements
