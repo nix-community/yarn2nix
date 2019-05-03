@@ -18,6 +18,7 @@ Options:
   --no-nix         Hide the nix output
   --no-patch       Don't patch the lockfile if hashes are missing
   --lockfile=FILE  Specify path to the lockfile [default: ./yarn.lock].
+  --hydra          Use pkgs.fetchgit for git dependencies to support Hydra.
 `
 
 const options = docopt(USAGE)
@@ -80,7 +81,7 @@ const fixedPkgsPromises = R.map(fixPkgAddMissingSha1, pkgs)
 
   if (!options['--no-nix']) {
     // print to stdout
-    console.log(generateNix(fixedPkgs))
+    console.log(generateNix(fixedPkgs, options['--hydra']))
   }
 })().catch(error => {
   console.error(error)
