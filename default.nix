@@ -366,25 +366,9 @@ in rec {
     });
 
   yarn2nix = mkYarnPackage {
-    src =
-      let
-        src = ./.;
-
-        mkFilter = { dirsToInclude, filesToInclude, root }: path: type:
-          let
-            inherit (pkgs.lib) any flip elem hasSuffix hasPrefix elemAt splitString;
-
-            subpath = elemAt (splitString "${toString root}/" path) 1;
-            spdir = elemAt (splitString "/" subpath) 0;
-          in elem spdir dirsToInclude ||
-            (type == "regular" && elem subpath filesToInclude);
-      in builtins.filterSource
-          (mkFilter {
-            dirsToInclude = ["bin" "lib"];
-            filesToInclude = ["package.json" "yarn.lock"];
-            root = src;
-          })
-          src;
+    # We need to be careful here to ensure that this works in restricted eval mode
+    # when using yarn2ni with IFD. In particular, filtering this source is not allowed.
+    src = ./.;
 
     # yarn2nix is the only package that requires the yarnNix option.
     # All the other projects can auto-generate that file.
