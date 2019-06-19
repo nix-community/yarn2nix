@@ -310,8 +310,10 @@ in rec {
         mv $NIX_BUILD_TOP/temp "$PWD/deps/${pname}"
         cd $PWD
 
-        ln -s ${deps}/deps/${pname}/node_modules "deps/${pname}/node_modules"
-
+        if [ -d ${deps}/deps/${pname}/node_modules ]; then
+          cp -r ${deps}/deps/${pname}/node_modules "deps/${pname}/node_modules"
+          chmod -R +w "deps/${pname}/node_modules"
+        fi
         cp -r $node_modules node_modules
         chmod -R +w node_modules
 
