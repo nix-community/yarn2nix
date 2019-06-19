@@ -320,7 +320,6 @@ in rec {
         ${linkDirFunction}
 
         linkDirToDirLinks "$(dirname node_modules/${pname})"
-        ln -s "deps/${pname}" "node_modules/${pname}"
 
         ${workspaceDependencyCopy}
 
