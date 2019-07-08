@@ -36,7 +36,7 @@ rec {
   weave-front-end = mkYarnPackage {
     name = "weave-front-end";
     src = ./.;
-    packageJson = ./package.json;
+    packageJSON = ./package.json;
     yarnLock = ./yarn.lock;
     # NOTE: this is optional and generated dynamically if omitted
     yarnNix = ./yarn.nix;
