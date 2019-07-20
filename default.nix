@@ -46,13 +46,32 @@ in rec {
     pkgs.runCommand "yarn.nix" {}
     "${yarn2nix}/bin/yarn2nix --lockfile ${yarnLock} --no-patch ${lib.escapeShellArgs flags} > $out";
 
+  defaultYarnFetch = fileName: { type, ... }@attrs:
+    if type == "git" then
+      let
+        repo = builtins.fetchGit {
+          inherit (attrs) url ref rev;
+        };
+      in
+        pkgs.runCommandNoCC "${fileName}" { buildInputs = [pkgs.gnutar]; } ''
+          # Set u+w because tar-fs can't unpack archives with read-only dirs
+          # https://github.com/mafintosh/tar-fs/issues/79
+          tar cf $out --mode u+w -C ${repo} .
+        ''
+    else if type == "url" then
+      fetchurl {
+        name = fileName;
+        inherit (attrs) url sha1;
+      }
+    else throw "Unsupported source type: ${type}";
+
   # Loads the generated offline cache. This will be used by yarn as
   # the package source.
-  importOfflineCache = yarnNix:
-    let
-      pkg = callPackage yarnNix { };
-    in
-      pkg.offline_cache;
+  importOfflineCache = { yarnFetch, yarnNix }:
+    linkFarm "offline" (lib.flip map (import yarnNix) ({ name, source, ... }@attrs: {
+      inherit name;
+      path = yarnFetch name source;
+    }));
 
   defaultYarnFlags = [
     "--offline"
@@ -69,13 +88,14 @@ in rec {
     yarnLock,
     yarnNix ? mkYarnNix { inherit yarnLock; },
     yarnFlags ? defaultYarnFlags,
+    yarnFetch ? defaultYarnFetch,
     pkgConfig ? {},
     preBuild ? "",
     postBuild ? "",
     workspaceDependencies ? [], # List of yarn packages
   }:
     let
-      offlineCache = importOfflineCache yarnNix;
+      offlineCache = importOfflineCache { inherit yarnFetch yarnNix; };
 
       extraBuildInputs = (lib.flatten (builtins.map (key:
         pkgConfig.${key}.buildInputs or []
@@ -227,6 +247,7 @@ in rec {
     yarnLock ? src + "/yarn.lock",
     yarnNix ? mkYarnNix { inherit yarnLock; },
     yarnFlags ? defaultYarnFlags,
+    yarnFetch ? defaultYarnFetch,
     yarnPreBuild ? "",
     pkgConfig ? {},
     extraBuildInputs ? [],
@@ -250,7 +271,7 @@ in rec {
         name = "${safeName}-modules-${version}";
         preBuild = yarnPreBuild;
         workspaceDependencies = workspaceDependenciesTransitive;
-        inherit packageJSON pname version yarnLock yarnNix yarnFlags pkgConfig;
+        inherit packageJSON pname version yarnLock yarnNix yarnFlags yarnFetch pkgConfig;
       };
 
       publishBinsFor_ = unlessNull publishBinsFor [pname];
@@ -284,7 +305,7 @@ in rec {
         '')
         workspaceDependenciesTransitive;
 
-    in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig" "workspaceDependencies"] // {
+    in stdenv.mkDerivation (builtins.removeAttrs attrs ["yarnFetch" "pkgConfig" "workspaceDependencies"] // {
       inherit src pname;
 
       name = baseName;
