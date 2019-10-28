@@ -369,6 +369,8 @@ in rec {
     # We need to be careful here to ensure that this works in restricted eval mode
     # when using yarn2ni with IFD. In particular, filtering this source is not allowed.
     src = ./.;
+    packageJSON = ./package.json;
+    yarnLock = ./yarn.lock;
 
     # yarn2nix is the only package that requires the yarnNix option.
     # All the other projects can auto-generate that file.
