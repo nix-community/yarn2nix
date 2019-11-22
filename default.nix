@@ -411,7 +411,7 @@ in rec {
     '';
   };
 
-  fixup_yarn_lock = stdenv.mkDerivation rec {
+  fixup_yarn_lock = stdenv.mkDerivation {
     name = "fixup_yarn_lock";
 
     buildInputs = [ nodejs ];
