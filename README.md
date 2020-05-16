@@ -65,5 +65,13 @@ To make this work nicely, I exposed the express server in `server.js` as a binar
 ./run-tests.sh
 ```
 
+## Troubleshooting
+
+### nix-build fails with "found changes in the lockfile" error
+
+`yarn2nix` runs on the beginning of build to ensure that `yarn.lock` is correct (and to collect nix-expressions if you haven't provided them). So, if there is something wrong, yarn2nix tries to change the lockfile, but fails and aborts, as it is run with `--no-patch` flag (as we can't let changes inside of `nix-build`).
+
+It can sometimes give false-positives, so the **solution** at the moment is running `yarn2nix --no-nix` to patch the lockfile in place (the flag is just to avoid config spam, unless you're up to write `yarn.nix`).
+
 ## License
 `yarn2nix` is released under the terms of the GPL-3.0 license.
