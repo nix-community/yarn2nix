@@ -129,6 +129,8 @@ in rec {
 
         ${workspaceDependencyLinks}
 
+        # Set the nodedir so we can build native packages.
+        yarn config --offline set nodedir ${nodejs}
         yarn install ${lib.escapeShellArgs yarnFlags}
 
         ${lib.concatStringsSep "\n" postInstall}
