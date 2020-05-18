@@ -1,6 +1,6 @@
 language: nix
 env:
-  - NIXPKGS_CHANNEL=nixos-18.09
+  - NIXPKGS_CHANNEL=nixos-20.03
   - NIXPKGS_CHANNEL=nixos-unstable
 
 # By building the tests, we also build yarn2nix itself.
