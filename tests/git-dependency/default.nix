@@ -1,6 +1,6 @@
-{ yarn2nix }:
+{ mkYarnPackage }:
 
-yarn2nix.mkYarnPackage {
+mkYarnPackage {
   src = ./.;
   buildPhase = ''
     source ${../../nix/expectShFunctions.sh}

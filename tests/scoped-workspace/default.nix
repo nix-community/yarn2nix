@@ -1,6 +1,6 @@
-{ yarn2nix }:
+{ mkYarnWorkspace }:
 
-yarn2nix.mkYarnWorkspace {
+mkYarnWorkspace {
   src = ./.;
 
   packageOverrides = {

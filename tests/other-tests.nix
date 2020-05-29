@@ -1,16 +1,20 @@
-{ yarn2nix ? import ../. {} }:
+{ pkgs ? import <nixpkgs> {},
+  y2nPkgs ? import ../. {} }:
 
 let
-  workspace = import ./workspace { inherit yarn2nix; };
-  scoped-workspace = import ./scoped-workspace { inherit yarn2nix; };
+  inherit (y2nPkgs) yarn2nix;
+  inherit (pkgs.yarn2nix-moretea) mkYarnPackage mkYarnWorkspace defaultYarnFlags;
+
+  workspace = import ./workspace { inherit mkYarnWorkspace; };
+  scoped-workspace = import ./scoped-workspace { inherit mkYarnWorkspace; };
 in
 {
-  wetty                   = import ./wetty { inherit yarn2nix; };
-  weave-front-end         = import ./weave-front-end { inherit yarn2nix; };
-  sendgrid-helpers        = import ./sendgrid-helpers { inherit yarn2nix; };
-  duplicate-pkgs          = import ./duplicate-pkgs { inherit yarn2nix; };
-  git-dependency          = import ./git-dependency { inherit yarn2nix; };
-  only-production         = import ./only-production { inherit yarn2nix; };
+  wetty                   = import ./wetty { inherit mkYarnPackage; };
+  weave-front-end         = import ./weave-front-end { inherit mkYarnPackage; };
+  sendgrid-helpers        = import ./sendgrid-helpers { inherit mkYarnPackage; };
+  duplicate-pkgs          = import ./duplicate-pkgs { inherit mkYarnPackage; };
+  git-dependency          = import ./git-dependency { inherit mkYarnPackage; };
+  only-production         = import ./only-production { inherit mkYarnPackage defaultYarnFlags; };
 
   workspace-package-one   = workspace.package-one;
   workspace-package-two   = workspace.package-two;
