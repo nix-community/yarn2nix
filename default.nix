@@ -77,20 +77,63 @@ in rec {
     let
       offlineCache = importOfflineCache yarnNix;
 
-      extraBuildInputs = (lib.flatten (builtins.map (key:
-        pkgConfig.${key}.buildInputs or []
-      ) (builtins.attrNames pkgConfig)));
+      mkBuildExtra = name: { buildInputs ? [], postInstall ? "", ... }: with lib;
+        let
+          inherit (callPackage yarnNix {}) packages;
+          inherit (entry) transitiveDeps;
 
-      postInstall = (builtins.map (key:
-        if (pkgConfig.${key} ? postInstall) then
-          ''
-            for f in $(find -L -path '*/node_modules/${key}' -type d); do
-              (cd "$f" && (${pkgConfig.${key}.postInstall}))
-            done
-          ''
-        else
-          ""
-      ) (builtins.attrNames pkgConfig));
+          normalizePackage = p: let
+            toSplit = if substring 0 1 p == "@" then substring 1 (stringLength p - 1) p else p;
+            norm' = splitString "@" toSplit;
+          in assert length norm' == 2;
+            { name = elemAt norm' 0; constraint = elemAt norm' 1; };
+
+          findYarnPackage = search: version:
+            let
+              equals = p: let
+                info = normalizePackage p.npmName;
+                toSearch = [ info.constraint ]
+                  ++ (map (n: (normalizePackage n).constraint) p.alternates);
+              in info.name == search && (any (n: n == version) toSearch || version == "*");
+              pkg' = findFirst equals null packages;
+            in
+              if pkg' != null then pkg' else throw ''
+                ouch! (${version}, ${search})
+              '';
+
+          # Fetches the sources of all dependencies of a dependency named `name` that
+          # has a custom `postInstall`-script. This is needed to make sure that those
+          # scripts can be built with all dependencies of `name` in its own derivation.
+          deps = foldl (
+            foundTransitiveDeps: toProcess: let
+              pkgInfo = normalizePackage toProcess;
+              info = let intermediate = findYarnPackage pkgInfo.name pkgInfo.constraint; in {
+                inherit (intermediate) resolved;
+                inherit (pkgInfo) name;
+              };
+            in foundTransitiveDeps ++ [info]
+          ) [] transitiveDeps;
+
+          entry = findYarnPackage name "*";
+
+          src = entry.path;
+        in
+        stdenv.mkDerivation {
+          inherit name src;
+          dontBuild = true;
+          buildInputs = buildInputs ++ [ yarn nodejs git ];
+          installPhase = ''
+            mkdir -p $out/node_modules
+            cp -r . $out
+            ${concatMapStringsSep "\n" ({ resolved, name }: let
+              tarball = "${builtins.fetchTarball resolved}";
+            in ''
+              cp -r ${tarball} $out/node_modules/${name}
+            '') deps}
+            cd $out
+            ${pkgConfig.sharp.postInstall}
+          '';
+        };
 
       workspaceJSON = pkgs.writeText
         "${name}-workspace-package.json"
@@ -106,7 +149,7 @@ in rec {
     in stdenv.mkDerivation {
       inherit preBuild postBuild name;
       phases = ["configurePhase" "buildPhase"];
-      buildInputs = [ yarn nodejs git ] ++ extraBuildInputs;
+      buildInputs = [ yarn nodejs git ];
 
       configurePhase = ''
         # Yarn writes cache directories etc to $HOME.
@@ -129,11 +172,13 @@ in rec {
 
         ${workspaceDependencyLinks}
 
-        # Set the nodedir so we can build native packages.
-        yarn config --offline set nodedir ${nodejs}
         yarn install ${lib.escapeShellArgs yarnFlags}
 
-        ${lib.concatStringsSep "\n" postInstall}
+        ${lib.concatStrings (lib.mapAttrsToList (name: cfg: ''
+          rm -rf node_modules/${name}
+          cp -r ${mkBuildExtra name cfg} node_modules/${name}
+          chmod -R a+w node_modules/${name}/
+        '') pkgConfig)}
 
         mkdir $out
         mv node_modules $out/
@@ -286,7 +331,7 @@ in rec {
         '')
         workspaceDependenciesTransitive;
 
-    in stdenv.mkDerivation (builtins.removeAttrs attrs ["pkgConfig" "workspaceDependencies"] // {
+    in stdenv.mkDerivation (builtins.removeAttrs attrs ["yarnNix" "pkgConfig" "workspaceDependencies"] // {
       inherit src pname;
 
       name = baseName;
@@ -312,16 +357,15 @@ in rec {
         mv $NIX_BUILD_TOP/temp "$PWD/deps/${pname}"
         cd $PWD
 
-        if [ -d ${deps}/deps/${pname}/node_modules ]; then
-          cp -r ${deps}/deps/${pname}/node_modules "deps/${pname}/node_modules"
-          chmod -R +w "deps/${pname}/node_modules"
-        fi
+        ln -s ${deps}/deps/${pname}/node_modules "deps/${pname}/node_modules"
+
         cp -r $node_modules node_modules
         chmod -R +w node_modules
 
         ${linkDirFunction}
 
         linkDirToDirLinks "$(dirname node_modules/${pname})"
+        ln -s "deps/${pname}" "node_modules/${pname}"
 
         ${workspaceDependencyCopy}
 
@@ -392,7 +436,7 @@ in rec {
     # yarn2nix is the only package that requires the yarnNix option.
     # All the other projects can auto-generate that file.
     yarnNix = ./yarn.nix;
-    
+
     # Using the filter above and importing package.json from the filtered
     # source results in an error in restricted mode. To circumvent this,
     # we import package.json from the unfiltered source
