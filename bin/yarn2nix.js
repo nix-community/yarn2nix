@@ -93,6 +93,10 @@ const fixedPkgsPromises = R.map(fixPkgAddMissingSha1, pkgs)
     fs.writeFileSync(options['--lockfile'], lockfile.stringify(json.object))
   }
 
+  if (options['--builtin-fetchgit']) {
+    console.error('Using --builtin-fetchgit is currently unsupported!')
+    process.exit(1)
+  }
   if (!options['--no-nix']) {
     const result = await generateNix(fixedPkgs, options['--builtin-fetchgit'])
 
