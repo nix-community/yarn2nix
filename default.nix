@@ -98,7 +98,9 @@ in rec {
               pkg' = findFirst equals null packages;
             in
               if pkg' != null then pkg' else throw ''
-                ouch! (${version}, ${search})
+                Cannot find package `${search}' matching the constraint `${version}'
+                in `yarn.nix'. It appears to be required for the custom build of
+                the dependency ${name}!
               '';
 
           # Fetches the sources of all dependencies of a dependency named `name` that
