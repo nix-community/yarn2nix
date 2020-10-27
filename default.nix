@@ -82,18 +82,17 @@ in rec {
           inherit (callPackage yarnNix {}) packages;
           inherit (entry) transitiveDeps;
 
-          normalizePackage = p: let
-            toSplit = if substring 0 1 p == "@" then substring 1 (stringLength p - 1) p else p;
-            norm' = splitString "@" toSplit;
-          in assert length norm' == 2;
-            { name = elemAt norm' 0; constraint = elemAt norm' 1; };
+          parseDependency = p: let
+            match = builtins.match "@?(.+)@(.*)" p;
+          in if match == null then throw "Invalid dependency spec '${p}'"
+            else { name = elemAt match 0; constraint = elemAt match 1; };
 
           findYarnPackage = search: version:
             let
               equals = p: let
-                info = normalizePackage p.npmName;
+                info = parseDependency p.npmName;
                 toSearch = [ info.constraint ]
-                  ++ (map (n: (normalizePackage n).constraint) p.alternates);
+                  ++ (map (n: (parseDependency n).constraint) p.alternates);
               in info.name == search && (any (n: n == version) toSearch || version == "*");
               pkg' = findFirst equals null packages;
             in
@@ -108,7 +107,7 @@ in rec {
           # scripts can be built with all dependencies of `name` in its own derivation.
           deps = foldl (
             foundTransitiveDeps: toProcess: let
-              pkgInfo = normalizePackage toProcess;
+              pkgInfo = parseDependency toProcess;
               info = let intermediate = findYarnPackage pkgInfo.name pkgInfo.constraint; in {
                 inherit (intermediate) resolved;
                 inherit (pkgInfo) name;
