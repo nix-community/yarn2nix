@@ -105,15 +105,14 @@ in rec {
           # Fetches the sources of all dependencies of a dependency named `name` that
           # has a custom `postInstall`-script. This is needed to make sure that those
           # scripts can be built with all dependencies of `name` in its own derivation.
-          deps = foldl (
-            foundTransitiveDeps: toProcess: let
+          deps = map (toProcess: let
               pkgInfo = parseDependency toProcess;
-              info = let intermediate = findYarnPackage pkgInfo.name pkgInfo.constraint; in {
-                inherit (intermediate) resolved;
-                inherit (pkgInfo) name;
-              };
-            in foundTransitiveDeps ++ [info]
-          ) [] transitiveDeps;
+              intermediate = findYarnPackage pkgInfo.name pkgInfo.constraint;
+            in {
+              inherit (intermediate) resolved;
+              inherit (pkgInfo) name;
+            }
+          ) transitiveDeps;
 
           entry = findYarnPackage name "*";
 
