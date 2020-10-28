@@ -87,20 +87,18 @@ in rec {
           in if match == null then throw "Invalid dependency spec '${p}'"
             else { name = elemAt match 0; constraint = elemAt match 1; };
 
-          findYarnPackage = { name, constraint }:
-            let
-              equals = p: let
-                info = parseDependency p.npmName;
-                toSearch = [ info.constraint ]
-                  ++ (map (n: (parseDependency n).constraint) p.alternates);
-              in info.name == name && (any (n: n == constraint) toSearch || constraint == "*");
-              pkg' = findFirst equals null packages;
-            in
-              if pkg' != null then pkg' else throw ''
-                Cannot find package `${name}' matching the constraint `${constraint}'
-                in `yarn.nix'. It appears to be required for the custom build of
-                the dependency ${name}!
-              '';
+          findYarnPackage = { name, constraint }: let
+            satisfies = p: let
+              info = parseDependency p.npmName;
+              toSearch = [ info.constraint ]
+                ++ (map (n: (parseDependency n).constraint) p.alternates);
+            in info.name == name && (any (n: n == constraint) toSearch || constraint == "*");
+            notFound = throw ''
+              Cannot find package `${name}' matching the constraint `${constraint}'
+              in `yarn.nix'. It appears to be required for the custom build of
+              the dependency ${name}!
+            '';
+          in findFirst satisfies notFound packages;
 
           # Fetches the sources of all dependencies of a dependency named `name` that
           # has a custom `postInstall`-script. This is needed to make sure that those
