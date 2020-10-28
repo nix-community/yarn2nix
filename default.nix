@@ -175,7 +175,7 @@ in rec {
         ${lib.concatStrings (lib.mapAttrsToList (name: cfg: ''
           rm -rf node_modules/${name}
           cp -r ${mkBuildExtra name cfg} node_modules/${name}
-          chmod -R a+w node_modules/${name}/
+          chmod -R u+w node_modules/${name}/
         '') pkgConfig)}
 
         mkdir $out
