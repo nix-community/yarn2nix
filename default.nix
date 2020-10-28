@@ -87,17 +87,17 @@ in rec {
           in if match == null then throw "Invalid dependency spec '${p}'"
             else { name = elemAt match 0; constraint = elemAt match 1; };
 
-          findYarnPackage = search: version:
+          findYarnPackage = { name, constraint }:
             let
               equals = p: let
                 info = parseDependency p.npmName;
                 toSearch = [ info.constraint ]
                   ++ (map (n: (parseDependency n).constraint) p.alternates);
-              in info.name == search && (any (n: n == version) toSearch || version == "*");
+              in info.name == name && (any (n: n == constraint) toSearch || constraint == "*");
               pkg' = findFirst equals null packages;
             in
               if pkg' != null then pkg' else throw ''
-                Cannot find package `${search}' matching the constraint `${version}'
+                Cannot find package `${name}' matching the constraint `${constraint}'
                 in `yarn.nix'. It appears to be required for the custom build of
                 the dependency ${name}!
               '';
@@ -107,14 +107,14 @@ in rec {
           # scripts can be built with all dependencies of `name` in its own derivation.
           deps = map (toProcess: let
               pkgInfo = parseDependency toProcess;
-              intermediate = findYarnPackage pkgInfo.name pkgInfo.constraint;
+              intermediate = findYarnPackage pkgInfo;
             in {
               inherit (intermediate) resolved;
               inherit (pkgInfo) name;
             }
           ) transitiveDeps;
 
-          entry = findYarnPackage name "*";
+          entry = findYarnPackage { inherit name; constraint = "*"; };
 
           src = entry.path;
         in
