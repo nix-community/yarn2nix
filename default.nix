@@ -83,7 +83,7 @@ in rec {
           inherit (entry) transitiveDeps;
 
           parseDependency = p: let
-            match = builtins.match "@?(.+)@(.*)" p;
+            match = builtins.match "@?([^@]+)@([^@]*)" p;
           in if match == null then throw "Invalid dependency spec '${p}'"
             else { name = elemAt match 0; constraint = elemAt match 1; };
 
