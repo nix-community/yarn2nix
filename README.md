@@ -1,3 +1,6 @@
+# This repo is deprecated and was integrated into nixpkgs in https://github.com/NixOS/nixpkgs/pull/108138
+
+
 # yarn2nix
 <img src="https://travis-ci.org/moretea/yarn2nix.svg?branch=master">
 
