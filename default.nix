@@ -77,6 +77,8 @@ in rec {
     let
       offlineCache = importOfflineCache yarnNix;
 
+      requiresWorkspaceSupport = (builtins.fromJSON (builtins.readFile packageJSON))?workspaces;
+
       mkBuildExtra = name: { buildInputs ? [], postInstall ? "", ... }: with lib;
         let
           inherit (callPackage yarnNix {}) packages;
@@ -157,11 +159,16 @@ in rec {
       buildPhase = ''
         runHook preBuild
 
-        mkdir -p "deps/${pname}"
-        cp ${packageJSON} "deps/${pname}/package.json"
-        cp ${workspaceJSON} ./package.json
-        cp ${yarnLock} ./yarn.lock
-        chmod +w ./yarn.lock
+        ${if requiresWorkspaceSupport then ''
+          mkdir -p "deps/${pname}"
+          cp ${packageJSON} "deps/${pname}/package.json"
+          cp ${workspaceJSON} ./package.json
+          cp ${yarnLock} ./yarn.lock
+        '' else ''
+          cp ${packageJSON} package.json
+          cp ${yarnLock} yarn.lock
+        ''}
+        chmod +w yarn.lock
 
         yarn config --offline set yarn-offline-mirror ${offlineCache}
 
@@ -180,7 +187,7 @@ in rec {
 
         mkdir $out
         mv node_modules $out/
-        mv deps $out/
+        ${lib.optionalString requiresWorkspaceSupport "mv deps $out/"}
         patchShebangs $out
 
         runHook postBuild
