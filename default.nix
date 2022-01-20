@@ -293,6 +293,8 @@ in rec {
       version = package.version or attrs.version;
       baseName = unlessNull name "${safeName}-${version}";
 
+      requiresWorkspaceSupport = (builtins.fromJSON (builtins.readFile packageJSON))?workspaces;
+
       workspaceDependenciesTransitive = lib.unique (
         (lib.flatten (builtins.map (dep: dep.workspaceDependencies) workspaceDependencies))
         ++ workspaceDependencies
@@ -362,7 +364,11 @@ in rec {
         mv $NIX_BUILD_TOP/temp "$PWD/deps/${pname}"
         cd $PWD
 
-        ln -s ${deps}/deps/${pname}/node_modules "deps/${pname}/node_modules"
+        ${if requiresWorkspaceSupport then ''
+          ln -s ${deps}/deps/${pname}/node_modules "deps/${pname}/node_modules"
+        '' else ''
+          ln -s ${deps}/node_modules deps/${pname}/node_modules
+        ''}
 
         cp -r $node_modules node_modules
         chmod -R +w node_modules
@@ -370,7 +376,7 @@ in rec {
         ${linkDirFunction}
 
         linkDirToDirLinks "$(dirname node_modules/${pname})"
-        ln -s "deps/${pname}" "node_modules/${pname}"
+        ln -s "${lib.optionalString (!requiresWorkspaceSupport) "../"}deps/${pname}" "node_modules/${pname}"
 
         ${workspaceDependencyCopy}
 
