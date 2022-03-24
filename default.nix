@@ -77,6 +77,8 @@ in rec {
     let
       offlineCache = importOfflineCache yarnNix;
 
+      requiresWorkspaceSupport = (builtins.fromJSON (builtins.readFile packageJSON))?workspaces;
+
       mkBuildExtra = name: { buildInputs ? [], postInstall ? "", ... }: with lib;
         let
           inherit (callPackage yarnNix {}) packages;
@@ -157,11 +159,16 @@ in rec {
       buildPhase = ''
         runHook preBuild
 
-        mkdir -p "deps/${pname}"
-        cp ${packageJSON} "deps/${pname}/package.json"
-        cp ${workspaceJSON} ./package.json
-        cp ${yarnLock} ./yarn.lock
-        chmod +w ./yarn.lock
+        ${if requiresWorkspaceSupport then ''
+          mkdir -p "deps/${pname}"
+          cp ${packageJSON} "deps/${pname}/package.json"
+          cp ${workspaceJSON} ./package.json
+          cp ${yarnLock} ./yarn.lock
+        '' else ''
+          cp ${packageJSON} package.json
+          cp ${yarnLock} yarn.lock
+        ''}
+        chmod +w yarn.lock
 
         yarn config --offline set yarn-offline-mirror ${offlineCache}
 
@@ -180,7 +187,7 @@ in rec {
 
         mkdir $out
         mv node_modules $out/
-        mv deps $out/
+        ${lib.optionalString requiresWorkspaceSupport "mv deps $out/"}
         patchShebangs $out
 
         runHook postBuild
@@ -286,6 +293,8 @@ in rec {
       version = package.version or attrs.version;
       baseName = unlessNull name "${safeName}-${version}";
 
+      requiresWorkspaceSupport = (builtins.fromJSON (builtins.readFile packageJSON))?workspaces;
+
       workspaceDependenciesTransitive = lib.unique (
         (lib.flatten (builtins.map (dep: dep.workspaceDependencies) workspaceDependencies))
         ++ workspaceDependencies
@@ -355,7 +364,11 @@ in rec {
         mv $NIX_BUILD_TOP/temp "$PWD/deps/${pname}"
         cd $PWD
 
-        ln -s ${deps}/deps/${pname}/node_modules "deps/${pname}/node_modules"
+        ${if requiresWorkspaceSupport then ''
+          ln -s ${deps}/deps/${pname}/node_modules "deps/${pname}/node_modules"
+        '' else ''
+          ln -s ${deps}/node_modules deps/${pname}/node_modules
+        ''}
 
         cp -r $node_modules node_modules
         chmod -R +w node_modules
@@ -363,7 +376,7 @@ in rec {
         ${linkDirFunction}
 
         linkDirToDirLinks "$(dirname node_modules/${pname})"
-        ln -s "deps/${pname}" "node_modules/${pname}"
+        ln -s "${lib.optionalString (!requiresWorkspaceSupport) "../"}deps/${pname}" "node_modules/${pname}"
 
         ${workspaceDependencyCopy}
 
